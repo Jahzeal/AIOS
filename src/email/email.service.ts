@@ -707,8 +707,9 @@ JSON Format:
       return;
     }
 
-    const { email_id, from, subject, created_at } = payload.data;
-    this.logger.log(`Received email metadata: ID=${email_id}, From=${from}, Subject=${subject}`);
+    const id = payload.data.id || payload.data.email_id || `email-${Date.now()}`;
+    const { from, subject, created_at, text, html } = payload.data;
+    this.logger.log(`Received email metadata: ID=${id}, From=${from}, Subject=${subject}`);
 
     const cleanEmail = this.extractEmail(from);
     if (!cleanEmail) {
@@ -755,37 +756,39 @@ JSON Format:
       },
     });
 
-    let bodyText = '';
-    let bodyHtml = '';
+    let bodyText = text || '';
+    let bodyHtml = html || '';
 
-    if (email_id.startsWith('mock-email-')) {
-      bodyText = this.mockReplyBodies.get(email_id) || 'Hey! That sounds cool. Let\'s chat.';
-      bodyHtml = `<p>${bodyText}</p>`;
-      this.mockReplyBodies.delete(email_id); // clean up from memory cache
-    } else if (this.isMockResend) {
-      this.logger.log(`Running in Resend mock mode. Simulating reply body fetching...`);
-      bodyText = `Hi, thank you for the outreach. Your automation service sounds interesting! Can we schedule a quick call to discuss how it works? Let know if this Thursday works for you. Best, ${lead.companyName || 'Manager'}`;
-      bodyHtml = `<p>Hi, thank you for the outreach.</p><p>Your automation service sounds interesting! Can we schedule a quick call to discuss how it works? Let know if this Thursday works for you.</p><p>Best,<br/>${lead.companyName || 'Manager'}</p>`;
-    } else {
-      try {
-        const response = await axios.get(`https://api.resend.com/emails/receiving/${email_id}`, {
-          headers: {
-            Authorization: `Bearer ${this.resendApiKey}`,
-          },
-        });
-        bodyText = response.data.text || '';
-        bodyHtml = response.data.html || '';
-      } catch (err: any) {
-        this.logger.error(`Failed to fetch email details from Resend API for ID ${email_id}: ${err.message}`);
-        bodyText = `Reply received regarding: ${subject}`;
+    if (!bodyText && !bodyHtml) {
+      if (id.startsWith('mock-email-')) {
+        bodyText = this.mockReplyBodies.get(id) || 'Hey! That sounds cool. Let\'s chat.';
         bodyHtml = `<p>${bodyText}</p>`;
+        this.mockReplyBodies.delete(id); // clean up from memory cache
+      } else if (this.isMockResend) {
+        this.logger.log(`Running in Resend mock mode. Simulating reply body fetching...`);
+        bodyText = `Hi, thank you for the outreach. Your automation service sounds interesting! Can we schedule a quick call to discuss how it works? Let know if this Thursday works for you. Best, ${lead.companyName || 'Manager'}`;
+        bodyHtml = `<p>Hi, thank you for the outreach.</p><p>Your automation service sounds interesting! Can we schedule a quick call to discuss how it works? Let know if this Thursday works for you.</p><p>Best,<br/>${lead.companyName || 'Manager'}</p>`;
+      } else {
+        try {
+          const response = await axios.get(`https://api.resend.com/emails/${id}`, {
+            headers: {
+              Authorization: `Bearer ${this.resendApiKey}`,
+            },
+          });
+          bodyText = response.data.text || '';
+          bodyHtml = response.data.html || '';
+        } catch (err: any) {
+          this.logger.error(`Failed to fetch email details from Resend API for ID ${id}: ${err.message}`);
+          bodyText = `Reply received regarding: ${subject}`;
+          bodyHtml = `<p>${bodyText}</p>`;
+        }
       }
     }
 
     // Store in received email database table
     const receivedEmail = await this.prisma.receivedEmail.create({
       data: {
-        id: email_id,
+        id: id,
         leadId: lead.id,
         from: from,
         subject: subject || 'No Subject',
