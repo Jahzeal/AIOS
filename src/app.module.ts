@@ -16,8 +16,8 @@ import { HunterModule } from './hunter/hunter.module';
       isGlobal: true,
     }),
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'frontend', 'dist'),
-      exclude: ['/api/(.*)'],
+      rootPath: join(__dirname, '..', '..', 'frontend', 'dist'),
+      exclude: ['/api/*path'],
     }),
     PrismaModule,
     JobsModule,
