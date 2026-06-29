@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Job {
+  id        String   @id @default(uuid())
+  type      String   // "SEARCH" | "URL_LIST"
+  query     String?  // Search query (Option 1)
+  location  String?  // Search location (Option 1)
+  status    String   // "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
+  error     String?  // Error message if failed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  leads     Lead[]
+}
+
+model Lead {
+  id               String   @id @default(uuid())
+  jobId            String
+  job              Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  companyName      String?
+  website          String
+  email            String?
+  phone            String?
+  facebook         String?
+  instagram        String?
+  linkedin         String?
+  twitter          String?
+  address          String?
+  description      String?
+  emailStatus      String?  @default("PENDING") // PENDING, GENERATING, COMPLIANCE_APPROVED, COMPLIANCE_REJECTED, SENT, FAILED, SKIPPED_SUPPRESSED, SKIPPED_CAP
+  emailSubject     String?
+  emailBody        String?
+  complianceReason String?
+  sentAt           DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  receivedEmails   ReceivedEmail[]
+  meetings         UpcomingMeeting[]
+  contacts         Contact[]
+}
+
+model Contact {
+  id          String    @id @default(uuid())
+  leadId      String
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  name        String?
+  role        String?
+  email       String?
+  linkedin    String?
+  emailStatus String?   @default("PENDING") // PENDING, SENT, FAILED, SKIPPED_SUPPRESSED
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model ConsentLedger {
+  id               String   @id @default(uuid())
+  leadId           String
+  businessName     String
+  email            String
+  relevanceReason  String
+  checkedAt        DateTime @default(now())
+}
+
+model SuppressionList {
+  id             String   @id @default(uuid())
+  emailOrDomain  String   @unique
+  reason         String?
+  createdAt      DateTime @default(now())
+}
+
+model ReceivedEmail {
+  id                  String   @id // Using Resend's email_id as primary key
+  leadId              String
+  lead                Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  from                String
+  subject             String
+  bodyText            String?
+  bodyHtml            String?
+  receivedAt          DateTime
+  draftedReplySubject String?
+  draftedReplyBody    String?
+  draftedReplyStatus  String   @default("DRAFTED") // DRAFTED | SENT | FAILED
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model UpcomingMeeting {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  title       String
+  email       String
+  meetingLink String
+  scheduledAt DateTime
+  createdAt   DateTime @default(now())
+}
