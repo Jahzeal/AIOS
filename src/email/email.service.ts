@@ -716,7 +716,7 @@ JSON Format:
       return;
     }
 
-    const lead = await this.prisma.lead.findFirst({
+    let lead = await this.prisma.lead.findFirst({
       where: {
         email: {
           equals: cleanEmail,
@@ -724,6 +724,23 @@ JSON Format:
         },
       },
     });
+
+    if (!lead) {
+      const contact = await this.prisma.contact.findFirst({
+        where: {
+          email: {
+            equals: cleanEmail,
+            mode: 'insensitive',
+          },
+        },
+        include: {
+          lead: true,
+        },
+      });
+      if (contact) {
+        lead = contact.lead;
+      }
+    }
 
     if (!lead) {
       this.logger.warn(`No lead matches the incoming sender email: ${cleanEmail}. Skipping received email record.`);
