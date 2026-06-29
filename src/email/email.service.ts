@@ -557,7 +557,8 @@ JSON Format:
    * Resend API email sender
    */
   private async sendEmail(to: string, subject: string, html: string): Promise<void> {
-    const unsubscribeUrl = `http://localhost:3000/api/email/unsubscribe?email=${encodeURIComponent(to)}`;
+    const appUrl = this.configService.get<string>('APP_URL') || 'https://aios-kkkl.onrender.com';
+    const unsubscribeUrl = `${appUrl}/api/email/unsubscribe?email=${encodeURIComponent(to)}`;
     const compiledHtml = html.replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl);
 
     if (this.isMockResend) {
@@ -799,7 +800,8 @@ JSON Format:
     this.logger.log(`Generating AI follow-up draft for ReceivedEmail: ${receivedEmail.id}`);
 
     const settings = await this.getSettings();
-    const bookingLink = `http://localhost:3000/api/meetings/simulate-booking?leadId=${lead.id}`;
+    const appUrl = this.configService.get<string>('APP_URL') || 'https://aios-kkkl.onrender.com';
+    const bookingLink = `${appUrl}/api/meetings/simulate-booking?leadId=${lead.id}`;
     const originalSubject = lead.emailSubject || 'Our previous outreach';
     const originalBody = lead.emailBody || '';
     const receivedSubject = receivedEmail.subject;
