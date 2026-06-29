@@ -736,3 +736,78 @@ body {
     width: 100%;
   }
 }
+
+/* Mobile Responsiveness Updates */
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .app-header > div {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem !important;
+  }
+
+  .status-bar {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .results-panel {
+    padding: 1rem;
+  }
+
+  .results-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-bar {
+    width: 100%;
+  }
+
+  .action-buttons {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .action-buttons button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Make tabs scrollable horizontally instead of stacking or wrapping in an ugly way */
+  .results-panel > .tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    max-width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    scrollbar-width: none; /* Hide standard scrollbar on Firefox */
+  }
+
+  .results-panel > .tabs::-webkit-scrollbar {
+    display: none; /* Hide scrollbar on Chrome/Safari */
+  }
+
+  .results-panel > .tabs .tab-btn {
+    flex: 0 0 auto;
+    padding: 8px 16px;
+  }
+
+  /* Adjust tables for smaller screens */
+  .leads-table th, .leads-table td {
+    padding: 8px;
+    font-size: 0.8rem;
+  }
+}
+
