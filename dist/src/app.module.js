@@ -29,7 +29,7 @@ exports.AppModule = AppModule = __decorate([
             }),
             serve_static_1.ServeStaticModule.forRoot({
                 rootPath: (0, path_1.join)(__dirname, '..', 'frontend', 'dist'),
-                exclude: ['/api*'],
+                exclude: ['/api/(.*)'],
             }),
             prisma_module_1.PrismaModule,
             jobs_module_1.JobsModule,

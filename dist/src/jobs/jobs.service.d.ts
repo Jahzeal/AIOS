@@ -15,59 +15,56 @@ export declare class JobsService implements OnModuleInit {
     constructor(prisma: PrismaService, firecrawl: FirecrawlService, emailService: EmailService, hunter: HunterService, apollo: ApolloService);
     onModuleInit(): void;
     createSearchJob(query: string, location: string): Promise<{
+        status: string;
         query: string | null;
         error: string | null;
         id: string;
-        type: string;
-        location: string | null;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        type: string;
+        location: string | null;
     }>;
     createUrlJob(urls: string[]): Promise<{
+        status: string;
         query: string | null;
         error: string | null;
         id: string;
-        type: string;
-        location: string | null;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        type: string;
+        location: string | null;
     }>;
     findAllJobs(): Promise<({
         _count: {
             leads: number;
         };
     } & {
+        status: string;
         query: string | null;
         error: string | null;
         id: string;
-        type: string;
-        location: string | null;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        type: string;
+        location: string | null;
     })[]>;
     findOneJob(id: string): Promise<({
         leads: ({
             contacts: {
+                email: string | null;
+                linkedin: string | null;
                 id: string;
+                emailStatus: string | null;
+                sentAt: Date | null;
                 createdAt: Date;
                 updatedAt: Date;
                 name: string | null;
-                email: string | null;
-                linkedin: string | null;
-                emailStatus: string | null;
-                sentAt: Date | null;
                 leadId: string;
                 role: string | null;
             }[];
         } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            companyName: string | null;
             website: string;
+            companyName: string | null;
             email: string | null;
             phone: string | null;
             facebook: string | null;
@@ -76,22 +73,25 @@ export declare class JobsService implements OnModuleInit {
             twitter: string | null;
             address: string | null;
             description: string | null;
+            id: string;
+            jobId: string;
             emailStatus: string | null;
             emailSubject: string | null;
             emailBody: string | null;
             complianceReason: string | null;
             sentAt: Date | null;
-            jobId: string;
+            createdAt: Date;
+            updatedAt: Date;
         })[];
     } & {
+        status: string;
         query: string | null;
         error: string | null;
         id: string;
-        type: string;
-        location: string | null;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        type: string;
+        location: string | null;
     }) | null>;
     findAllLeads(search?: string): Promise<({
         job: {
@@ -100,23 +100,20 @@ export declare class JobsService implements OnModuleInit {
             location: string | null;
         };
         contacts: {
+            email: string | null;
+            linkedin: string | null;
             id: string;
+            emailStatus: string | null;
+            sentAt: Date | null;
             createdAt: Date;
             updatedAt: Date;
             name: string | null;
-            email: string | null;
-            linkedin: string | null;
-            emailStatus: string | null;
-            sentAt: Date | null;
             leadId: string;
             role: string | null;
         }[];
     } & {
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        companyName: string | null;
         website: string;
+        companyName: string | null;
         email: string | null;
         phone: string | null;
         facebook: string | null;
@@ -125,22 +122,25 @@ export declare class JobsService implements OnModuleInit {
         twitter: string | null;
         address: string | null;
         description: string | null;
+        id: string;
+        jobId: string;
         emailStatus: string | null;
         emailSubject: string | null;
         emailBody: string | null;
         complianceReason: string | null;
         sentAt: Date | null;
-        jobId: string;
+        createdAt: Date;
+        updatedAt: Date;
     })[]>;
     deleteJob(id: string): Promise<{
+        status: string;
         query: string | null;
         error: string | null;
         id: string;
-        type: string;
-        location: string | null;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        type: string;
+        location: string | null;
     }>;
     private processQueue;
     private executeSearchJob;
