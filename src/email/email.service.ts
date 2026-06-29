@@ -821,8 +821,7 @@ JSON Format:
     this.logger.log(`Generating AI follow-up draft for ReceivedEmail: ${receivedEmail.id}`);
 
     const settings = await this.getSettings();
-    const appUrl = this.configService.get<string>('APP_URL') || 'https://aios-kkkl.onrender.com';
-    const bookingLink = `${appUrl}/api/meetings/simulate-booking?leadId=${lead.id}`;
+    const bookingLink = settings.bookingLink;
     const originalSubject = lead.emailSubject || 'Our previous outreach';
     const originalBody = lead.emailBody || '';
     const receivedSubject = receivedEmail.subject;
