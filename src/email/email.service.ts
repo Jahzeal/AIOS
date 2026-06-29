@@ -680,14 +680,15 @@ JSON Format:
       throw new Error(`Draft is not completed yet for reply ${receivedEmailId}.`);
     }
 
-    if (!reply.lead.email) {
-      throw new Error(`Lead associated with reply ${receivedEmailId} has no email address.`);
+    const recipientEmail = this.extractEmail(reply.from) || reply.lead.email;
+    if (!recipientEmail) {
+      throw new Error(`No valid recipient email address available for reply ${receivedEmailId}.`);
     }
 
-    this.logger.log(`Sending follow-up reply to ${reply.lead.email} via Resend...`);
+    this.logger.log(`Sending follow-up reply to ${recipientEmail} via Resend...`);
 
     // Send the email using existing helper
-    await this.sendEmail(reply.lead.email, reply.draftedReplySubject, reply.draftedReplyBody);
+    await this.sendEmail(recipientEmail, reply.draftedReplySubject, reply.draftedReplyBody);
 
     // Update reply status in database
     await this.prisma.receivedEmail.update({
