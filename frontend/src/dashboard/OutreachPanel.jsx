@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Mail, ExternalLink, X, ArrowLeft } from 'lucide-react';
-import { T } from './shared.jsx';
+import { T, API } from './shared.jsx';
 
-export default function OutreachPanel({ leads, selectedLeadId, setSelectedLeadId }) {
+export default function OutreachPanel({ leads, selectedLeadId, setSelectedLeadId, token, onLoadAll }) {
   const selectedLead = leads.find(l => l.id === selectedLeadId) || null;
   const setSelectedLead = (lead) => setSelectedLeadId(lead ? lead.id : null);
 
@@ -54,6 +54,73 @@ export default function OutreachPanel({ leads, selectedLeadId, setSelectedLeadId
 
     allMessages = [initialMsg, ...replies].sort((a, b) => a.date - b.date);
   }
+
+  const pendingReply = selectedLead 
+    ? (selectedLead.receivedEmails || []).find(r => r.draftedReplyStatus === 'DRAFTED') 
+    : null;
+
+  const [draftSubject, setDraftSubject] = useState('');
+  const [draftBody, setDraftBody] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (pendingReply) {
+      setDraftSubject(pendingReply.draftedReplySubject || `Re: ${pendingReply.subject}`);
+      setDraftBody(pendingReply.draftedReplyBody || '');
+      setIsEditing(false);
+      setErrorMsg('');
+    } else {
+      setDraftSubject('');
+      setDraftBody('');
+      setIsEditing(false);
+      setErrorMsg('');
+    }
+  }, [pendingReply]);
+
+  const handleSaveDraft = async () => {
+    setIsSaving(true);
+    setErrorMsg('');
+    try {
+      const res = await API(`/api/email/replies/${pendingReply.id}/draft`, token, {
+        method: 'PUT',
+        body: JSON.stringify({ subject: draftSubject, body: draftBody })
+      });
+      if (res.ok) {
+        setIsEditing(false);
+        if (onLoadAll) await onLoadAll();
+      } else {
+        const err = await res.json();
+        setErrorMsg(err.message || 'Failed to save draft');
+      }
+    } catch {
+      setErrorMsg('Network error saving draft');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSendReply = async () => {
+    setIsSending(true);
+    setErrorMsg('');
+    try {
+      const res = await API(`/api/email/replies/${pendingReply.id}/send`, token, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        if (onLoadAll) await onLoadAll();
+      } else {
+        const err = await res.json();
+        setErrorMsg(err.message || 'Failed to send reply');
+      }
+    } catch {
+      setErrorMsg('Network error sending reply');
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
     <div className={`inbox-layout ${selectedLead ? 'chat-open' : ''}`}>
@@ -169,14 +236,97 @@ export default function OutreachPanel({ leads, selectedLeadId, setSelectedLeadId
               ))}
             </div>
 
-            <div className="draft-editor-box" style={{ marginTop: '1.5rem', background: 'rgba(0, 0, 0, 0.2)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1.25rem' }}>
-              <div style={{ fontSize: '0.8rem', color: 'rgba(248,250,252,0.5)', fontWeight: 600, marginBottom: '0.4rem' }}>
-                Outreach Status: <span style={{ color: '#34d399', fontWeight: 700 }}>COMPLETED & ACTIVE</span>
+            {pendingReply ? (
+              <div className="draft-editor-box" style={{ marginTop: '1.5rem', background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.18)', borderRadius: '12px', padding: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#a5b4fc', fontWeight: 700 }}>
+                    AI Generated Reply Draft (Review Required)
+                  </div>
+                  {!isEditing && (
+                    <button 
+                      onClick={() => setIsEditing(true)}
+                      style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: '0.78rem', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}
+                    >
+                      Edit Draft
+                    </button>
+                  )}
+                </div>
+
+                {isEditing ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.72rem', color: 'rgba(248,250,252,0.4)', marginBottom: '4px', fontWeight: 600 }}>Subject</label>
+                      <input 
+                        type="text" 
+                        value={draftSubject}
+                        onChange={(e) => setDraftSubject(e.target.value)}
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', color: '#f8fafc', fontSize: '0.82rem', fontFamily: 'inherit', outline: 'none' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.72rem', color: 'rgba(248,250,252,0.4)', marginBottom: '4px', fontWeight: 600 }}>Body (HTML allowed)</label>
+                      <textarea 
+                        rows={6}
+                        value={draftBody}
+                        onChange={(e) => setDraftBody(e.target.value)}
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', color: '#f8fafc', fontSize: '0.82rem', fontFamily: 'inherit', outline: 'none', resize: 'vertical' }}
+                      />
+                    </div>
+                    {errorMsg && <div style={{ fontSize: '0.78rem', color: '#f87171', fontWeight: 600 }}>{errorMsg}</div>}
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                      <button 
+                        onClick={handleSaveDraft}
+                        disabled={isSaving}
+                        style={{ padding: '7px 14px', borderRadius: '6px', background: '#4f46e5', border: 'none', color: '#fff', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        {isSaving ? 'Saving...' : 'Save Draft'}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setIsEditing(false);
+                          setDraftSubject(pendingReply.draftedReplySubject || `Re: ${pendingReply.subject}`);
+                          setDraftBody(pendingReply.draftedReplyBody || '');
+                        }}
+                        style={{ padding: '7px 14px', borderRadius: '6px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: '#f8fafc', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f8fafc', marginBottom: '6px' }}>Subject: {draftSubject}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'rgba(248,250,252,0.85)', lineHeight: '1.4' }} dangerouslySetInnerHTML={{ __html: draftBody }} />
+                    </div>
+                    {errorMsg && <div style={{ fontSize: '0.78rem', color: '#f87171', fontWeight: 600 }}>{errorMsg}</div>}
+                    <div>
+                      <button 
+                        onClick={handleSendReply}
+                        disabled={isSending}
+                        style={{
+                          width: '100%', padding: '10px 0', borderRadius: '8px', border: 'none',
+                          background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+                          color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                          boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)'
+                        }}
+                      >
+                        {isSending ? 'Sending Reply...' : 'Send AI Draft Response'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'rgba(248,250,252,0.35)', lineHeight: '1.4' }}>
-                Any subsequent email replies from the customer will appear in this thread automatically.
+            ) : (
+              <div className="draft-editor-box" style={{ marginTop: '1.5rem', background: 'rgba(0, 0, 0, 0.2)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1.25rem' }}>
+                <div style={{ fontSize: '0.8rem', color: 'rgba(248,250,252,0.5)', fontWeight: 600, marginBottom: '0.4rem' }}>
+                  Outreach Status: <span style={{ color: '#34d399', fontWeight: 700 }}>COMPLETED & ACTIVE</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'rgba(248,250,252,0.35)', lineHeight: '1.4' }}>
+                  Any subsequent email replies from the customer will appear in this thread automatically.
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       ) : (

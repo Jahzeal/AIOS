@@ -173,7 +173,7 @@ export default function Dashboard({ token, onLogout }) {
     overview:  <Overview      jobs={jobs} leads={leads} emailStats={emailStats} />,
     discovery: <Discovery     token={token} jobs={jobs} onRefresh={loadAll} onNotify={notify} onViewJobLeads={handleViewJobLeads} settings={settings} />,
     leads:     <LeadsPanel    token={token} leads={leads} jobs={jobs} leadFilterJobId={leadFilterJobId} setLeadFilterJobId={setLeadFilterJobId} onNotify={notify} onRefresh={loadAll} />,
-    outreach:  <OutreachPanel leads={leads} selectedLeadId={selectedOutreachLeadId} setSelectedLeadId={setSelectedOutreachLeadId} />,
+    outreach:  <OutreachPanel leads={leads} selectedLeadId={selectedOutreachLeadId} setSelectedLeadId={setSelectedOutreachLeadId} token={token} onLoadAll={loadAll} />,
     replies:   <RepliesPanel  replies={replies} onViewReplyLead={(leadId) => {
       setSelectedOutreachLeadId(leadId);
       setActiveTab('outreach');
