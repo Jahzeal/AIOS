@@ -10,13 +10,13 @@ export declare class JobsController {
         query: string | null;
         error: string | null;
         id: string;
-        createdAt: Date;
         userId: string | null;
+        createdAt: Date;
         updatedAt: Date;
+        status: string;
         type: string;
         location: string | null;
         keywords: string | null;
-        status: string;
     }>;
     createUrlJob(req: any, body: {
         urls: string[];
@@ -24,13 +24,13 @@ export declare class JobsController {
         query: string | null;
         error: string | null;
         id: string;
-        createdAt: Date;
         userId: string | null;
+        createdAt: Date;
         updatedAt: Date;
+        status: string;
         type: string;
         location: string | null;
         keywords: string | null;
-        status: string;
     }>;
     findAllJobs(req: any): Promise<({
         _count: {
@@ -40,32 +40,32 @@ export declare class JobsController {
         query: string | null;
         error: string | null;
         id: string;
-        createdAt: Date;
         userId: string | null;
+        createdAt: Date;
         updatedAt: Date;
+        status: string;
         type: string;
         location: string | null;
         keywords: string | null;
-        status: string;
     })[]>;
     findOneJob(req: any, id: string): Promise<({
         leads: ({
             contacts: {
                 id: string;
-                createdAt: Date;
-                name: string | null;
-                leadId: string;
                 email: string | null;
+                createdAt: Date;
                 updatedAt: Date;
+                name: string | null;
                 linkedin: string | null;
                 emailStatus: string | null;
                 sentAt: Date | null;
+                leadId: string;
                 role: string | null;
             }[];
         } & {
             id: string;
-            createdAt: Date;
             email: string | null;
+            createdAt: Date;
             updatedAt: Date;
             jobId: string;
             companyName: string | null;
@@ -87,13 +87,13 @@ export declare class JobsController {
         query: string | null;
         error: string | null;
         id: string;
-        createdAt: Date;
         userId: string | null;
+        createdAt: Date;
         updatedAt: Date;
+        status: string;
         type: string;
         location: string | null;
         keywords: string | null;
-        status: string;
     }) | null>;
     findAllLeads(req: any, search?: string): Promise<({
         job: {
@@ -104,10 +104,10 @@ export declare class JobsController {
         receivedEmails: {
             id: string;
             createdAt: Date;
-            leadId: string;
             updatedAt: Date;
-            from: string;
+            leadId: string;
             subject: string;
+            from: string;
             bodyText: string | null;
             bodyHtml: string | null;
             receivedAt: Date;
@@ -117,20 +117,20 @@ export declare class JobsController {
         }[];
         contacts: {
             id: string;
-            createdAt: Date;
-            name: string | null;
-            leadId: string;
             email: string | null;
+            createdAt: Date;
             updatedAt: Date;
+            name: string | null;
             linkedin: string | null;
             emailStatus: string | null;
             sentAt: Date | null;
+            leadId: string;
             role: string | null;
         }[];
     } & {
         id: string;
-        createdAt: Date;
         email: string | null;
+        createdAt: Date;
         updatedAt: Date;
         jobId: string;
         companyName: string | null;
@@ -152,13 +152,13 @@ export declare class JobsController {
         query: string | null;
         error: string | null;
         id: string;
-        createdAt: Date;
         userId: string | null;
+        createdAt: Date;
         updatedAt: Date;
+        status: string;
         type: string;
         location: string | null;
         keywords: string | null;
-        status: string;
     } | {
         error: string;
     }>;
