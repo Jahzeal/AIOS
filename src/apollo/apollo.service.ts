@@ -119,7 +119,12 @@ export class ApolloService {
       return contacts;
     } catch (error: any) {
       const apiError = error.response?.data || error.message;
-      this.logger.error(`Apollo.io search failed for ${cleanDomain}: ${JSON.stringify(apiError)}`);
+      const errorStr = JSON.stringify(apiError);
+      if (errorStr.includes('API_INACCESSIBLE') || errorStr.includes('free plan')) {
+        this.logger.warn(`Apollo.io search is disabled: Your Apollo API key is on the Free Plan and does not support People Search API requests. Please upgrade your plan at https://app.apollo.io/ to enable this enrichment.`);
+      } else {
+        this.logger.error(`Apollo.io search failed for ${cleanDomain}: ${errorStr}`);
+      }
       return [];
     }
   }

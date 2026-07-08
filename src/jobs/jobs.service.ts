@@ -171,6 +171,22 @@ export class JobsService implements OnModuleInit {
     });
   }
 
+  async stopJob(userId: string, id: string) {
+    const job = await this.prisma.job.findFirst({ where: { id, userId } });
+    if (!job) return { error: 'Not found or not authorized' };
+    if (job.status === 'PENDING' || job.status === 'PROCESSING') {
+      await this.prisma.job.update({
+        where: { id },
+        data: {
+          status: 'FAILED',
+          error: 'Stopped by user',
+        },
+      });
+      this.logger.log(`Job ${id} stopped manually by user.`);
+    }
+    return { success: true };
+  }
+
   /**
    * Background queue processor
    */
@@ -249,6 +265,13 @@ export class JobsService implements OnModuleInit {
 
       for (const lead of pendingLeads) {
         try {
+          // Check if job was cancelled/stopped
+          const currentJob = await this.prisma.job.findUnique({ where: { id: job.id } });
+          if (!currentJob || currentJob.status === 'FAILED' || currentJob.status === 'COMPLETED') {
+            this.logger.log(`Job ${job.id} was stopped or failed. Aborting lead scraping loop.`);
+            break;
+          }
+
           // 1. Check cache
           const cachedLead = await this.prisma.lead.findFirst({
             where: {
@@ -386,6 +409,13 @@ export class JobsService implements OnModuleInit {
 
       for (const lead of pendingLeads) {
         try {
+          // Check if job was cancelled/stopped
+          const currentJob = await this.prisma.job.findUnique({ where: { id: job.id } });
+          if (!currentJob || currentJob.status === 'FAILED' || currentJob.status === 'COMPLETED') {
+            this.logger.log(`Job ${job.id} was stopped or failed. Aborting URL scraping loop.`);
+            break;
+          }
+
           // 1. Check cache
           const cachedLead = await this.prisma.lead.findFirst({
             where: {
@@ -531,16 +561,41 @@ export class JobsService implements OnModuleInit {
 
       // Merge and deduplicate by email (case-insensitive)
       const seen = new Set<string>();
-      const mergedContacts = [...hunterContacts, ...apolloContacts].filter((c) => {
+      let mergedContacts = [...hunterContacts, ...apolloContacts].filter((c) => {
         const key = c.email.toLowerCase();
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
       });
 
+      // Filter contacts by keywords (target titles) if defined
+      let filterKeywords = keywords;
+      if (!filterKeywords) {
+        try {
+          const settings = userId
+            ? await this.prisma.settings.findFirst({ where: { userId } })
+            : await this.prisma.settings.findFirst();
+          if (settings && settings.crawlKeywords) {
+            filterKeywords = settings.crawlKeywords;
+          }
+        } catch {}
+      }
+
+      if (filterKeywords && filterKeywords.trim()) {
+        const titleKeywords = filterKeywords.split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
+        if (titleKeywords.length > 0) {
+          const beforeFilterCount = mergedContacts.length;
+          mergedContacts = mergedContacts.filter(c => {
+            const roleLower = (c.role || '').toLowerCase();
+            return titleKeywords.some(keyword => roleLower.includes(keyword));
+          });
+          this.logger.log(`Filtered contacts by target titles [${titleKeywords.join(', ')}]: kept ${mergedContacts.length} of ${beforeFilterCount} contacts.`);
+        }
+      }
+
       this.logger.log(
         `Hunter: ${hunterContacts.length}, Apollo: ${apolloContacts.length}, ` +
-        `Merged unique: ${mergedContacts.length} contacts for ${companyName}`,
+        `Merged unique after filters: ${mergedContacts.length} contacts for ${companyName}`,
       );
 
       if (mergedContacts.length > 0) {

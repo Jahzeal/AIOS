@@ -168,6 +168,13 @@ export declare class JobsService implements OnModuleInit {
     } | {
         error: string;
     }>;
+    stopJob(userId: string, id: string): Promise<{
+        error: string;
+        success?: undefined;
+    } | {
+        success: boolean;
+        error?: undefined;
+    }>;
     private processQueue;
     private executeSearchJob;
     private executeUrlListJob;

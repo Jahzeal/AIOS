@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Clock, Loader, Trash2, X, FolderOpen } from 'lucide-react';
+import { Search, Clock, Loader, Trash2, X, FolderOpen, Square } from 'lucide-react';
 import { API, T, StatusBadge, inputStyle } from './shared.jsx';
 
 export default function Discovery({ token, jobs, onRefresh, onNotify, onViewJobLeads, settings }) {
@@ -53,6 +53,21 @@ export default function Discovery({ token, jobs, onRefresh, onNotify, onViewJobL
   const deleteJob = async (id) => {
     await API(`/api/jobs/${id}`, token, { method: 'DELETE' });
     onRefresh();
+  };
+
+  const stopJob = async (id) => {
+    try {
+      const res = await API(`/api/jobs/${id}/stop`, token, { method: 'POST' });
+      if (res.ok) {
+        onNotify('⏹️ Job stopping...');
+        onRefresh();
+      } else {
+        const e = await res.json();
+        onNotify(`❌ ${e.message}`);
+      }
+    } catch {
+      onNotify('❌ Network error stopping job');
+    }
   };
 
   return (
@@ -142,6 +157,15 @@ export default function Discovery({ token, jobs, onRefresh, onNotify, onViewJobL
                     >
                       <FolderOpen size={13} />
                     </button>
+                    {(j.status === 'PENDING' || j.status === 'PROCESSING') && (
+                      <button
+                        onClick={() => stopJob(j.id)}
+                        title="Stop Job"
+                        style={{ ...T.btn, ...T.btnDanger, padding: '4px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(239,68,68,0.12)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}
+                      >
+                        <Square size={13} fill="#f87171" />
+                      </button>
+                    )}
                     <button
                       onClick={() => deleteJob(j.id)}
                       title="Delete Job"

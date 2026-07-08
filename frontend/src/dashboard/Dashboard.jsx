@@ -223,10 +223,14 @@ export default function Dashboard({ token, onLogout }) {
             transform: translateX(-100%) !important;
             width: 240px !important;
             box-shadow: 5px 0 15px rgba(0,0,0,0.5) !important;
+            overflow: hidden !important;
           }
           .dashboard-sidebar.open {
             transform: translateX(0) !important;
             width: 240px !important;
+          }
+          .dashboard-sidebar.filters-sidebar-active.open {
+            width: 300px !important;
           }
           .dashboard-backdrop {
             display: block !important;
@@ -371,7 +375,7 @@ export default function Dashboard({ token, onLogout }) {
 
       {/* ── Sidebar ── */}
       <div 
-        className={`dashboard-sidebar ${sidebarOpen ? 'open' : ''}`}
+        className={`dashboard-sidebar ${sidebarOpen ? 'open' : ''} ${sidebarMode === 'filters' && activeTab === 'discovery' ? 'filters-sidebar-active' : ''}`}
         style={{
           width: sidebarOpen ? (sidebarMode === 'filters' && activeTab === 'discovery' ? 300 : 220) : 64, flexShrink: 0, transition: 'all 0.25s ease',
           background: 'rgba(13,15,26,0.95)', borderRight: '1px solid rgba(255,255,255,0.07)',
@@ -403,7 +407,7 @@ export default function Dashboard({ token, onLogout }) {
             </div>
 
             {/* Scrollable Accordions */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 0.5rem' }}>
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0.75rem 0.5rem' }}>
               {[
                 ['company', 'Company', filterCompany, setFilterCompany, 'e.g. Acme Corp', 'Target a specific corporate organization name.'],
                 ['titles', 'Titles', filterTitles, setFilterTitles, 'e.g. CTO, Owner, VP', 'Target contacts matching particular decision-maker job roles.'],

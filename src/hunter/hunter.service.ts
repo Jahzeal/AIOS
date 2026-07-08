@@ -8,15 +8,6 @@ export interface HunterContact {
   email: string;
 }
 
-// Seniority levels Hunter.io API supports as filter values
-const HUNTER_SENIORITY_LEVELS = ['executive', 'director', 'manager', 'owner', 'partner'];
-
-// Ordered from highest to lowest priority for ranking
-const DECISION_MAKER_KEYWORDS = [
-  'ceo', 'chief', 'owner', 'founder', 'president', 'director', 'vp', 'vice president',
-  'head of', 'manager', 'partner', 'principal', 'managing',
-];
-
 @Injectable()
 export class HunterService {
   private readonly logger = new Logger(HunterService.name);
@@ -56,8 +47,7 @@ export class HunterService {
         params: {
           domain: cleanDomain,
           api_key: this.apiKey,
-          seniority: HUNTER_SENIORITY_LEVELS.join(','), // filter at API level
-          limit: 10,
+          limit: 15,
         },
       });
 
@@ -71,9 +61,8 @@ export class HunterService {
             email: e.value,
           }));
 
-        const ranked = this.rankByDecisionMakerScore(contacts);
-        this.logger.log(`Hunter.io found ${ranked.length} decision-maker contacts for ${cleanDomain}`);
-        return ranked;
+        this.logger.log(`Hunter.io found ${contacts.length} contacts for ${cleanDomain}`);
+        return contacts;
       }
 
       return [];
@@ -82,22 +71,6 @@ export class HunterService {
       this.logger.error(`Hunter.io Domain Search failed for ${cleanDomain}: ${JSON.stringify(apiError)}`);
       return [];
     }
-  }
-
-  /**
-   * Sort contacts so highest-seniority decision makers come first
-   */
-  private rankByDecisionMakerScore(contacts: HunterContact[]): HunterContact[] {
-    return [...contacts].sort((a, b) => this.decisionMakerScore(b.role) - this.decisionMakerScore(a.role));
-  }
-
-  private decisionMakerScore(role: string): number {
-    if (!role) return 0;
-    const r = role.toLowerCase();
-    for (let i = 0; i < DECISION_MAKER_KEYWORDS.length; i++) {
-      if (r.includes(DECISION_MAKER_KEYWORDS[i])) return DECISION_MAKER_KEYWORDS.length - i;
-    }
-    return 0;
   }
 
   private extractDomain(urlStr: string): string | null {

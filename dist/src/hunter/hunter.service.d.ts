@@ -11,8 +11,6 @@ export declare class HunterService {
     private readonly isMockMode;
     constructor(configService: ConfigService);
     findContacts(domain: string): Promise<HunterContact[]>;
-    private rankByDecisionMakerScore;
-    private decisionMakerScore;
     private extractDomain;
     private sleep;
     private generateMockContacts;

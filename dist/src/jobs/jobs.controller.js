@@ -39,6 +39,9 @@ let JobsController = class JobsController {
     async deleteJob(req, id) {
         return this.jobsService.deleteJob(req.user.userId, id);
     }
+    async stopJob(req, id) {
+        return this.jobsService.stopJob(req.user.userId, id);
+    }
 };
 exports.JobsController = JobsController;
 __decorate([
@@ -88,6 +91,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], JobsController.prototype, "deleteJob", null);
+__decorate([
+    (0, common_1.Post)('jobs/:id/stop'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], JobsController.prototype, "stopJob", null);
 exports.JobsController = JobsController = __decorate([
     (0, common_1.Controller)('api'),
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard),

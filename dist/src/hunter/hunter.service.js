@@ -17,11 +17,6 @@ exports.HunterService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const axios_1 = __importDefault(require("axios"));
-const HUNTER_SENIORITY_LEVELS = ['executive', 'director', 'manager', 'owner', 'partner'];
-const DECISION_MAKER_KEYWORDS = [
-    'ceo', 'chief', 'owner', 'founder', 'president', 'director', 'vp', 'vice president',
-    'head of', 'manager', 'partner', 'principal', 'managing',
-];
 let HunterService = HunterService_1 = class HunterService {
     configService;
     logger = new common_1.Logger(HunterService_1.name);
@@ -54,8 +49,7 @@ let HunterService = HunterService_1 = class HunterService {
                 params: {
                     domain: cleanDomain,
                     api_key: this.apiKey,
-                    seniority: HUNTER_SENIORITY_LEVELS.join(','),
-                    limit: 10,
+                    limit: 15,
                 },
             });
             if (response.data && response.data.data && Array.isArray(response.data.data.emails)) {
@@ -67,9 +61,8 @@ let HunterService = HunterService_1 = class HunterService {
                     role: e.position || 'Manager',
                     email: e.value,
                 }));
-                const ranked = this.rankByDecisionMakerScore(contacts);
-                this.logger.log(`Hunter.io found ${ranked.length} decision-maker contacts for ${cleanDomain}`);
-                return ranked;
+                this.logger.log(`Hunter.io found ${contacts.length} contacts for ${cleanDomain}`);
+                return contacts;
             }
             return [];
         }
@@ -78,19 +71,6 @@ let HunterService = HunterService_1 = class HunterService {
             this.logger.error(`Hunter.io Domain Search failed for ${cleanDomain}: ${JSON.stringify(apiError)}`);
             return [];
         }
-    }
-    rankByDecisionMakerScore(contacts) {
-        return [...contacts].sort((a, b) => this.decisionMakerScore(b.role) - this.decisionMakerScore(a.role));
-    }
-    decisionMakerScore(role) {
-        if (!role)
-            return 0;
-        const r = role.toLowerCase();
-        for (let i = 0; i < DECISION_MAKER_KEYWORDS.length; i++) {
-            if (r.includes(DECISION_MAKER_KEYWORDS[i]))
-                return DECISION_MAKER_KEYWORDS.length - i;
-        }
-        return 0;
     }
     extractDomain(urlStr) {
         try {

@@ -162,4 +162,11 @@ export declare class JobsController {
     } | {
         error: string;
     }>;
+    stopJob(req: any, id: string): Promise<{
+        error: string;
+        success?: undefined;
+    } | {
+        success: boolean;
+        error?: undefined;
+    }>;
 }

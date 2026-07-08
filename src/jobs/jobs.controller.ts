@@ -36,4 +36,9 @@ export class JobsController {
   async deleteJob(@Req() req: any, @Param('id') id: string) {
     return this.jobsService.deleteJob(req.user.userId, id);
   }
+
+  @Post('jobs/:id/stop')
+  async stopJob(@Req() req: any, @Param('id') id: string) {
+    return this.jobsService.stopJob(req.user.userId, id);
+  }
 }
