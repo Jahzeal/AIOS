@@ -11,12 +11,13 @@ const common_1 = require("@nestjs/common");
 const email_service_1 = require("./email.service");
 const email_controller_1 = require("./email.controller");
 const prisma_module_1 = require("../prisma/prisma.module");
+const auth_module_1 = require("../auth/auth.module");
 let EmailModule = class EmailModule {
 };
 exports.EmailModule = EmailModule;
 exports.EmailModule = EmailModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule],
+        imports: [prisma_module_1.PrismaModule, auth_module_1.AuthModule],
         providers: [email_service_1.EmailService],
         controllers: [email_controller_1.EmailController],
         exports: [email_service_1.EmailService],

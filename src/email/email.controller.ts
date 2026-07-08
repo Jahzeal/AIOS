@@ -1,49 +1,56 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus, Req, UseGuards } from '@nestjs/common';
 import { EmailService } from './email.service';
+import { AuthGuard } from '../auth/auth.guard';
 
 @Controller('api/email')
 export class EmailController {
   constructor(private readonly emailService: EmailService) {}
 
   @Get('status')
-  async getStatus() {
-    return this.emailService.getDailyStats();
+  @UseGuards(AuthGuard)
+  async getStatus(@Req() req: any) {
+    return this.emailService.getDailyStats(req.user.userId);
   }
 
   @Get('consent-ledger')
+  @UseGuards(AuthGuard)
   async getConsentLedger() {
     return this.emailService.getConsentLedger();
   }
 
   @Get('suppressions')
+  @UseGuards(AuthGuard)
   async getSuppressions() {
     return this.emailService.getSuppressions();
   }
 
   @Post('suppressions')
+  @UseGuards(AuthGuard)
   async addSuppression(@Body() body: { emailOrDomain: string; reason?: string }) {
     return this.emailService.addSuppression(body.emailOrDomain, body.reason);
   }
 
   @Delete('suppressions/:id')
+  @UseGuards(AuthGuard)
   async removeSuppression(@Param('id') id: string) {
     return this.emailService.removeSuppression(id);
   }
 
   @Post('send/:leadId')
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
   async triggerEmail(@Param('leadId') leadId: string) {
     await this.emailService.processEmailPipeline(leadId);
     return { success: true, message: 'Email outreach process triggered.' };
   }
 
+  // Public — no auth needed (user clicks link in email)
   @Get('unsubscribe')
   async unsubscribe(@Query('email') email: string) {
     if (email && email.trim() !== '') {
       await this.emailService.addSuppression(email, 'User clicked unsubscribe link');
     }
     
-    // Return simple responsive unsubscribe success message page
     return `
       <!DOCTYPE html>
       <html>
@@ -73,20 +80,9 @@ export class EmailController {
             width: 100%;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
           }
-          h1 {
-            color: #6366f1;
-            margin-bottom: 16px;
-            font-size: 24px;
-          }
-          p {
-            color: #94a3b8;
-            line-height: 1.6;
-            margin-bottom: 24px;
-          }
-          .email {
-            font-weight: bold;
-            color: #f8fafc;
-          }
+          h1 { color: #6366f1; margin-bottom: 16px; font-size: 24px; }
+          p { color: #94a3b8; line-height: 1.6; margin-bottom: 24px; }
+          .email { font-weight: bold; color: #f8fafc; }
         </style>
       </head>
       <body>
@@ -100,17 +96,20 @@ export class EmailController {
   }
 
   @Get('replies')
-  async getReplies() {
-    return this.emailService.getReceivedReplies();
+  @UseGuards(AuthGuard)
+  async getReplies(@Req() req: any) {
+    return this.emailService.getReceivedReplies(req.user.userId);
   }
 
   @Post('replies/:id/send')
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
   async sendReply(@Param('id') id: string) {
     return this.emailService.sendFollowUpReply(id);
   }
 
   @Put('replies/:id/draft')
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
   async updateDraft(
     @Param('id') id: string,
@@ -119,26 +118,26 @@ export class EmailController {
     return this.emailService.updateDraftReply(id, body.subject, body.body);
   }
 
+  // Public — webhook from Resend
   @Post('webhook/received')
   @HttpCode(HttpStatus.OK)
   async handleWebhook(@Body() payload: any) {
-    // We run this asynchronously so Resend gets an immediate 200 OK response.
-    // This is a production best-practice for webhook handling.
     this.emailService.processInboundWebhook(payload).catch(err => {
       console.error('Error processing inbound webhook:', err);
     });
     return { received: true };
   }
 
-
   @Get('settings')
-  async getSettings() {
-    return this.emailService.getSettings();
+  @UseGuards(AuthGuard)
+  async getSettings(@Req() req: any) {
+    return this.emailService.getSettings(req.user.userId);
   }
 
   @Post('settings')
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
-  async updateSettings(@Body() body: { autoRespond: boolean; bookingLink?: string }) {
-    return this.emailService.updateSettings(body.autoRespond, body.bookingLink);
+  async updateSettings(@Req() req: any, @Body() body: any) {
+    return this.emailService.updateSettings(req.user.userId, body);
   }
 }

@@ -3,14 +3,17 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
 }
 
 model Job {
   id        String   @id @default(uuid())
+  userId    String?  // Owner of this job (null = legacy / unscoped)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      String   // "SEARCH" | "URL_LIST"
   query     String?  // Search query (Option 1)
   location  String?  // Search location (Option 1)
+  keywords  String?  // Custom decision-maker keywords to target (Option 2)
   status    String   // "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
   error     String?  // Error message if failed
   createdAt DateTime @default(now())
@@ -99,4 +102,33 @@ model UpcomingMeeting {
   meetingLink String
   scheduledAt DateTime
   createdAt   DateTime @default(now())
+}
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  username  String?
+  password  String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  jobs      Job[]
+  settings  Settings[]
+}
+
+model Settings {
+  id             String   @id @default(uuid())
+  userId         String?  // Owner of these settings (null = global / legacy)
+  user           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  corporateName  String   @default("")
+  email          String   @default("onboarding@resend.dev")
+  phoneNumber    String   @default("")
+  emailTemplate  String   @default("Exclusive Offer: Free Automation Services for {{company}}")
+  leadsPerDay    Int      @default(15)
+  crawlLocation  String   @default("")
+  crawlIndustry  String   @default("Bakery, Cafe, Gym")
+  crawlKeywords  String   @default("CTO, Chief Technology Officer, VP of Engineering, VP Engineering, Director of Engineering, Head of Engineering, Tech Lead, Technical Lead, Chief Architect, VP of Technology, Head of Technology, VP of IT, Head of IT, IT Manager, Engineering Manager")
+  autoRespond    Boolean  @default(true)
+  bookingLink    String   @default("https://calendar.app.google/Zg1o5bgrSsUdPgtS8")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

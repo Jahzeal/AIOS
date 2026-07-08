@@ -52,14 +52,13 @@ export class MeetingsService {
     return meeting;
   }
 
-  async findAllMeetings() {
+  async findAllMeetings(userId?: string) {
     return this.prisma.upcomingMeeting.findMany({
-      include: {
-        lead: true,
-      },
-      orderBy: {
-        scheduledAt: 'asc',
-      },
+      where: userId
+        ? { lead: { job: { userId } } }
+        : undefined,
+      include: { lead: true },
+      orderBy: { scheduledAt: 'asc' },
     });
   }
 

@@ -2,63 +2,74 @@ import { JobsService } from './jobs.service';
 export declare class JobsController {
     private readonly jobsService;
     constructor(jobsService: JobsService);
-    createSearchJob(body: {
+    createSearchJob(req: any, body: {
         query: string;
         location: string;
+        keywords?: string;
     }): Promise<{
-        status: string;
         query: string | null;
         error: string | null;
         id: string;
         createdAt: Date;
+        userId: string | null;
         updatedAt: Date;
         type: string;
         location: string | null;
+        keywords: string | null;
+        status: string;
     }>;
-    createUrlJob(body: {
+    createUrlJob(req: any, body: {
         urls: string[];
     }): Promise<{
-        status: string;
         query: string | null;
         error: string | null;
         id: string;
         createdAt: Date;
+        userId: string | null;
         updatedAt: Date;
         type: string;
         location: string | null;
+        keywords: string | null;
+        status: string;
     }>;
-    findAllJobs(): Promise<({
+    findAllJobs(req: any): Promise<({
         _count: {
             leads: number;
         };
     } & {
-        status: string;
         query: string | null;
         error: string | null;
         id: string;
         createdAt: Date;
+        userId: string | null;
         updatedAt: Date;
         type: string;
         location: string | null;
+        keywords: string | null;
+        status: string;
     })[]>;
-    findOneJob(id: string): Promise<({
+    findOneJob(req: any, id: string): Promise<({
         leads: ({
             contacts: {
-                email: string | null;
-                linkedin: string | null;
                 id: string;
-                emailStatus: string | null;
-                sentAt: Date | null;
                 createdAt: Date;
-                updatedAt: Date;
                 name: string | null;
                 leadId: string;
+                email: string | null;
+                updatedAt: Date;
+                linkedin: string | null;
+                emailStatus: string | null;
+                sentAt: Date | null;
                 role: string | null;
             }[];
         } & {
-            website: string;
-            companyName: string | null;
+            id: string;
+            createdAt: Date;
             email: string | null;
+            updatedAt: Date;
+            jobId: string;
+            companyName: string | null;
+            website: string;
             phone: string | null;
             facebook: string | null;
             instagram: string | null;
@@ -66,48 +77,64 @@ export declare class JobsController {
             twitter: string | null;
             address: string | null;
             description: string | null;
-            id: string;
-            jobId: string;
             emailStatus: string | null;
             emailSubject: string | null;
             emailBody: string | null;
             complianceReason: string | null;
             sentAt: Date | null;
-            createdAt: Date;
-            updatedAt: Date;
         })[];
     } & {
-        status: string;
         query: string | null;
         error: string | null;
         id: string;
         createdAt: Date;
+        userId: string | null;
         updatedAt: Date;
         type: string;
         location: string | null;
+        keywords: string | null;
+        status: string;
     }) | null>;
-    findAllLeads(search?: string): Promise<({
+    findAllLeads(req: any, search?: string): Promise<({
         job: {
             query: string | null;
             type: string;
             location: string | null;
         };
-        contacts: {
-            email: string | null;
-            linkedin: string | null;
+        receivedEmails: {
             id: string;
-            emailStatus: string | null;
-            sentAt: Date | null;
             createdAt: Date;
+            leadId: string;
             updatedAt: Date;
+            from: string;
+            subject: string;
+            bodyText: string | null;
+            bodyHtml: string | null;
+            receivedAt: Date;
+            draftedReplySubject: string | null;
+            draftedReplyBody: string | null;
+            draftedReplyStatus: string;
+        }[];
+        contacts: {
+            id: string;
+            createdAt: Date;
             name: string | null;
             leadId: string;
+            email: string | null;
+            updatedAt: Date;
+            linkedin: string | null;
+            emailStatus: string | null;
+            sentAt: Date | null;
             role: string | null;
         }[];
     } & {
-        website: string;
-        companyName: string | null;
+        id: string;
+        createdAt: Date;
         email: string | null;
+        updatedAt: Date;
+        jobId: string;
+        companyName: string | null;
+        website: string;
         phone: string | null;
         facebook: string | null;
         instagram: string | null;
@@ -115,24 +142,24 @@ export declare class JobsController {
         twitter: string | null;
         address: string | null;
         description: string | null;
-        id: string;
-        jobId: string;
         emailStatus: string | null;
         emailSubject: string | null;
         emailBody: string | null;
         complianceReason: string | null;
         sentAt: Date | null;
-        createdAt: Date;
-        updatedAt: Date;
     })[]>;
-    deleteJob(id: string): Promise<{
-        status: string;
+    deleteJob(req: any, id: string): Promise<{
         query: string | null;
         error: string | null;
         id: string;
         createdAt: Date;
+        userId: string | null;
         updatedAt: Date;
         type: string;
         location: string | null;
+        keywords: string | null;
+        status: string;
+    } | {
+        error: string;
     }>;
 }

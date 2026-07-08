@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query, HttpCode, HttpStatus, Req, UseGuards } from '@nestjs/common';
 import { MeetingsService } from './meetings.service';
+import { AuthGuard } from '../auth/auth.guard';
 
 @Controller('api/meetings')
 export class MeetingsController {
@@ -212,8 +213,9 @@ export class MeetingsController {
   }
 
   @Get()
-  async findAllMeetings() {
-    return this.meetingsService.findAllMeetings();
+  @UseGuards(AuthGuard)
+  async findAllMeetings(@Req() req: any) {
+    return this.meetingsService.findAllMeetings(req.user.userId);
   }
 
   @Delete(':id')

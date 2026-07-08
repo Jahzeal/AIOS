@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MeetingsController = void 0;
 const common_1 = require("@nestjs/common");
 const meetings_service_1 = require("./meetings.service");
+const auth_guard_1 = require("../auth/auth.guard");
 let MeetingsController = class MeetingsController {
     meetingsService;
     constructor(meetingsService) {
@@ -206,8 +207,8 @@ let MeetingsController = class MeetingsController {
     async createMeeting(body) {
         return this.meetingsService.createMeeting(body.leadId, body.title, body.email, body.meetingLink, body.scheduledAt);
     }
-    async findAllMeetings() {
-        return this.meetingsService.findAllMeetings();
+    async findAllMeetings(req) {
+        return this.meetingsService.findAllMeetings(req.user.userId);
     }
     async deleteMeeting(id) {
         return this.meetingsService.deleteMeeting(id);
@@ -230,8 +231,10 @@ __decorate([
 ], MeetingsController.prototype, "createMeeting", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], MeetingsController.prototype, "findAllMeetings", null);
 __decorate([

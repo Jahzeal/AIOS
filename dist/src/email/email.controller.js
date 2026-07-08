@@ -15,13 +15,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailController = void 0;
 const common_1 = require("@nestjs/common");
 const email_service_1 = require("./email.service");
+const auth_guard_1 = require("../auth/auth.guard");
 let EmailController = class EmailController {
     emailService;
     constructor(emailService) {
         this.emailService = emailService;
     }
-    async getStatus() {
-        return this.emailService.getDailyStats();
+    async getStatus(req) {
+        return this.emailService.getDailyStats(req.user.userId);
     }
     async getConsentLedger() {
         return this.emailService.getConsentLedger();
@@ -72,20 +73,9 @@ let EmailController = class EmailController {
             width: 100%;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
           }
-          h1 {
-            color: #6366f1;
-            margin-bottom: 16px;
-            font-size: 24px;
-          }
-          p {
-            color: #94a3b8;
-            line-height: 1.6;
-            margin-bottom: 24px;
-          }
-          .email {
-            font-weight: bold;
-            color: #f8fafc;
-          }
+          h1 { color: #6366f1; margin-bottom: 16px; font-size: 24px; }
+          p { color: #94a3b8; line-height: 1.6; margin-bottom: 24px; }
+          .email { font-weight: bold; color: #f8fafc; }
         </style>
       </head>
       <body>
@@ -97,8 +87,8 @@ let EmailController = class EmailController {
       </html>
     `;
     }
-    async getReplies() {
-        return this.emailService.getReceivedReplies();
+    async getReplies(req) {
+        return this.emailService.getReceivedReplies(req.user.userId);
     }
     async sendReply(id) {
         return this.emailService.sendFollowUpReply(id);
@@ -112,34 +102,39 @@ let EmailController = class EmailController {
         });
         return { received: true };
     }
-    async getSettings() {
-        return this.emailService.getSettings();
+    async getSettings(req) {
+        return this.emailService.getSettings(req.user.userId);
     }
-    async updateSettings(body) {
-        return this.emailService.updateSettings(body.autoRespond, body.bookingLink);
+    async updateSettings(req, body) {
+        return this.emailService.updateSettings(req.user.userId, body);
     }
 };
 exports.EmailController = EmailController;
 __decorate([
     (0, common_1.Get)('status'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "getStatus", null);
 __decorate([
     (0, common_1.Get)('consent-ledger'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "getConsentLedger", null);
 __decorate([
     (0, common_1.Get)('suppressions'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "getSuppressions", null);
 __decorate([
     (0, common_1.Post)('suppressions'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -147,6 +142,7 @@ __decorate([
 ], EmailController.prototype, "addSuppression", null);
 __decorate([
     (0, common_1.Delete)('suppressions/:id'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -154,6 +150,7 @@ __decorate([
 ], EmailController.prototype, "removeSuppression", null);
 __decorate([
     (0, common_1.Post)('send/:leadId'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Param)('leadId')),
     __metadata("design:type", Function),
@@ -169,12 +166,15 @@ __decorate([
 ], EmailController.prototype, "unsubscribe", null);
 __decorate([
     (0, common_1.Get)('replies'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "getReplies", null);
 __decorate([
     (0, common_1.Post)('replies/:id/send'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -183,6 +183,7 @@ __decorate([
 ], EmailController.prototype, "sendReply", null);
 __decorate([
     (0, common_1.Put)('replies/:id/draft'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
@@ -200,16 +201,20 @@ __decorate([
 ], EmailController.prototype, "handleWebhook", null);
 __decorate([
     (0, common_1.Get)('settings'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "getSettings", null);
 __decorate([
     (0, common_1.Post)('settings'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "updateSettings", null);
 exports.EmailController = EmailController = __decorate([

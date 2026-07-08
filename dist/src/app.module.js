@@ -18,6 +18,9 @@ const jobs_module_1 = require("./jobs/jobs.module");
 const email_module_1 = require("./email/email.module");
 const meetings_module_1 = require("./meetings/meetings.module");
 const hunter_module_1 = require("./hunter/hunter.module");
+const auth_module_1 = require("./auth/auth.module");
+const core_1 = require("@nestjs/core");
+const auth_guard_1 = require("./auth/auth.guard");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -28,17 +31,24 @@ exports.AppModule = AppModule = __decorate([
                 isGlobal: true,
             }),
             serve_static_1.ServeStaticModule.forRoot({
-                rootPath: (0, path_1.join)(__dirname, '..', 'frontend', 'dist'),
-                exclude: ['/api/(.*)'],
+                rootPath: (0, path_1.join)(__dirname, '..', '..', 'frontend', 'dist'),
+                exclude: ['/api/*path'],
             }),
             prisma_module_1.PrismaModule,
+            auth_module_1.AuthModule,
             jobs_module_1.JobsModule,
             email_module_1.EmailModule,
             meetings_module_1.MeetingsModule,
             hunter_module_1.HunterModule,
         ],
         controllers: [app_controller_1.AppController],
-        providers: [app_service_1.AppService],
+        providers: [
+            app_service_1.AppService,
+            {
+                provide: core_1.APP_GUARD,
+                useClass: auth_guard_1.AuthGuard,
+            },
+        ],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

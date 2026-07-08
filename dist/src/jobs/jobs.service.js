@@ -36,12 +36,14 @@ let JobsService = JobsService_1 = class JobsService {
         setInterval(() => this.processQueue(), 5000);
         this.logger.log('Background job queue processor initialized.');
     }
-    async createSearchJob(query, location) {
+    async createSearchJob(userId, query, location, keywords) {
         const job = await this.prisma.job.create({
             data: {
+                userId,
                 type: 'SEARCH',
                 query,
                 location,
+                keywords,
                 status: 'PENDING',
             },
         });
@@ -49,9 +51,10 @@ let JobsService = JobsService_1 = class JobsService {
         this.processQueue().catch((err) => this.logger.error('Error triggering queue process:', err));
         return job;
     }
-    async createUrlJob(urls) {
+    async createUrlJob(userId, urls) {
         const job = await this.prisma.job.create({
             data: {
+                userId,
                 type: 'URL_LIST',
                 status: 'PENDING',
             },
@@ -74,8 +77,9 @@ let JobsService = JobsService_1 = class JobsService {
         this.processQueue().catch((err) => this.logger.error('Error triggering queue process:', err));
         return job;
     }
-    async findAllJobs() {
+    async findAllJobs(userId) {
         return this.prisma.job.findMany({
+            where: { userId },
             orderBy: { createdAt: 'desc' },
             include: {
                 _count: {
@@ -84,9 +88,9 @@ let JobsService = JobsService_1 = class JobsService {
             },
         });
     }
-    async findOneJob(id) {
-        return this.prisma.job.findUnique({
-            where: { id },
+    async findOneJob(userId, id) {
+        return this.prisma.job.findFirst({
+            where: { id, userId },
             include: {
                 leads: {
                     orderBy: { companyName: 'asc' },
@@ -97,10 +101,15 @@ let JobsService = JobsService_1 = class JobsService {
             },
         });
     }
-    async findAllLeads(search) {
+    async findAllLeads(userId, search) {
+        const userJobIds = (await this.prisma.job.findMany({
+            where: { userId },
+            select: { id: true },
+        })).map(j => j.id);
         if (search) {
             return this.prisma.lead.findMany({
                 where: {
+                    jobId: { in: userJobIds },
                     OR: [
                         { companyName: { contains: search, mode: 'insensitive' } },
                         { website: { contains: search, mode: 'insensitive' } },
@@ -111,6 +120,7 @@ let JobsService = JobsService_1 = class JobsService {
                 orderBy: { createdAt: 'desc' },
                 include: {
                     contacts: true,
+                    receivedEmails: true,
                     job: {
                         select: { type: true, query: true, location: true },
                     },
@@ -118,16 +128,21 @@ let JobsService = JobsService_1 = class JobsService {
             });
         }
         return this.prisma.lead.findMany({
+            where: { jobId: { in: userJobIds } },
             orderBy: { createdAt: 'desc' },
             include: {
                 contacts: true,
+                receivedEmails: true,
                 job: {
                     select: { type: true, query: true, location: true },
                 },
             },
         });
     }
-    async deleteJob(id) {
+    async deleteJob(userId, id) {
+        const job = await this.prisma.job.findFirst({ where: { id, userId } });
+        if (!job)
+            return { error: 'Not found or not authorized' };
         return this.prisma.job.delete({
             where: { id },
         });
@@ -422,12 +437,18 @@ let JobsService = JobsService_1 = class JobsService {
     async enrichLeadWithContacts(leadId, domain, companyName) {
         try {
             this.logger.log(`Enriching Lead ${leadId} (${companyName}) with contacts from Hunter.io + Apollo.io...`);
+            const lead = await this.prisma.lead.findUnique({
+                where: { id: leadId },
+                include: { job: true },
+            });
+            const userId = lead?.job?.userId || undefined;
+            const keywords = lead?.job?.keywords || undefined;
             const [hunterContacts, apolloContacts] = await Promise.all([
                 this.hunter.findContacts(domain).catch((err) => {
                     this.logger.warn(`Hunter.io failed for ${domain}: ${err.message}`);
                     return [];
                 }),
-                this.apollo.findContacts(domain).catch((err) => {
+                this.apollo.findContacts(domain, userId, keywords).catch((err) => {
                     this.logger.warn(`Apollo.io failed for ${domain}: ${err.message}`);
                     return [];
                 }),

@@ -10,12 +10,13 @@ exports.ApolloModule = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const apollo_service_1 = require("./apollo.service");
+const prisma_module_1 = require("../prisma/prisma.module");
 let ApolloModule = class ApolloModule {
 };
 exports.ApolloModule = ApolloModule;
 exports.ApolloModule = ApolloModule = __decorate([
     (0, common_1.Module)({
-        imports: [config_1.ConfigModule],
+        imports: [config_1.ConfigModule, prisma_module_1.PrismaModule],
         providers: [apollo_service_1.ApolloService],
         exports: [apollo_service_1.ApolloService],
     })

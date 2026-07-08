@@ -25,50 +25,72 @@ export declare class EmailService {
     checkSuppression(email: string): Promise<boolean>;
     getSuppressions(): Promise<{
         id: string;
-        createdAt: Date;
         emailOrDomain: string;
         reason: string | null;
+        createdAt: Date;
     }[]>;
     addSuppression(emailOrDomain: string, reason?: string): Promise<{
         id: string;
-        createdAt: Date;
         emailOrDomain: string;
         reason: string | null;
+        createdAt: Date;
     }>;
     removeSuppression(id: string): Promise<{
         id: string;
-        createdAt: Date;
         emailOrDomain: string;
         reason: string | null;
+        createdAt: Date;
     }>;
     getConsentLedger(): Promise<{
-        email: string;
         id: string;
         leadId: string;
         businessName: string;
+        email: string;
         relevanceReason: string;
         checkedAt: Date;
     }[]>;
-    getDailyStats(): Promise<EmailStats>;
+    getDailyStats(userId?: string): Promise<EmailStats>;
     private generatePersonalizedPitch;
     private verifyCompliance;
     private callGemini;
     private sendEmail;
     private sleep;
-    private getSettingsPath;
-    getSettings(): Promise<{
-        autoRespond: any;
-        bookingLink: any;
+    getSettings(userId?: string): Promise<any>;
+    updateSettings(userId: string | undefined, data: {
+        corporateName?: string;
+        email?: string;
+        phoneNumber?: string;
+        emailTemplate?: string;
+        leadsPerDay?: number;
+        crawlLocation?: string;
+        crawlIndustry?: string;
+        autoRespond?: boolean;
+        bookingLink?: string;
+    }): Promise<{
+        id: string;
+        createdAt: Date;
+        email: string;
+        userId: string | null;
+        corporateName: string;
+        phoneNumber: string;
+        emailTemplate: string;
+        leadsPerDay: number;
+        crawlLocation: string;
+        crawlIndustry: string;
+        crawlKeywords: string;
+        autoRespond: boolean;
+        bookingLink: string;
+        updatedAt: Date;
     }>;
-    updateSettings(autoRespond: boolean, bookingLink?: string): Promise<{
-        autoRespond: any;
-        bookingLink: any;
-    }>;
-    getReceivedReplies(): Promise<({
+    getReceivedReplies(userId?: string): Promise<({
         lead: {
-            website: string;
-            companyName: string | null;
+            id: string;
+            createdAt: Date;
             email: string | null;
+            updatedAt: Date;
+            jobId: string;
+            companyName: string | null;
+            website: string;
             phone: string | null;
             facebook: string | null;
             instagram: string | null;
@@ -76,23 +98,19 @@ export declare class EmailService {
             twitter: string | null;
             address: string | null;
             description: string | null;
-            id: string;
-            jobId: string;
             emailStatus: string | null;
             emailSubject: string | null;
             emailBody: string | null;
             complianceReason: string | null;
             sentAt: Date | null;
-            createdAt: Date;
-            updatedAt: Date;
         };
     } & {
         id: string;
         createdAt: Date;
-        updatedAt: Date;
         leadId: string;
-        subject: string;
+        updatedAt: Date;
         from: string;
+        subject: string;
         bodyText: string | null;
         bodyHtml: string | null;
         receivedAt: Date;
@@ -103,10 +121,10 @@ export declare class EmailService {
     updateDraftReply(receivedEmailId: string, subject: string, body: string): Promise<{
         id: string;
         createdAt: Date;
-        updatedAt: Date;
         leadId: string;
-        subject: string;
+        updatedAt: Date;
         from: string;
+        subject: string;
         bodyText: string | null;
         bodyHtml: string | null;
         receivedAt: Date;
@@ -121,10 +139,10 @@ export declare class EmailService {
     generateFollowUpDraft(lead: any, receivedEmail: any): Promise<{
         id: string;
         createdAt: Date;
-        updatedAt: Date;
         leadId: string;
-        subject: string;
+        updatedAt: Date;
         from: string;
+        subject: string;
         bodyText: string | null;
         bodyHtml: string | null;
         receivedAt: Date;

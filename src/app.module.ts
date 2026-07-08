@@ -9,6 +9,9 @@ import { JobsModule } from './jobs/jobs.module';
 import { EmailModule } from './email/email.module';
 import { MeetingsModule } from './meetings/meetings.module';
 import { HunterModule } from './hunter/hunter.module';
+import { AuthModule } from './auth/auth.module';
+import { APP_GUARD } from '@nestjs/core';
+import { AuthGuard } from './auth/auth.guard';
 
 @Module({
   imports: [
@@ -20,12 +23,20 @@ import { HunterModule } from './hunter/hunter.module';
       exclude: ['/api/*path'],
     }),
     PrismaModule,
+    AuthModule,
     JobsModule,
     EmailModule,
     MeetingsModule,
     HunterModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
+  ],
 })
 export class AppModule {}
+

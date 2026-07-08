@@ -14,12 +14,13 @@ const firecrawl_module_1 = require("../firecrawl/firecrawl.module");
 const email_module_1 = require("../email/email.module");
 const hunter_module_1 = require("../hunter/hunter.module");
 const apollo_module_1 = require("../apollo/apollo.module");
+const auth_module_1 = require("../auth/auth.module");
 let JobsModule = class JobsModule {
 };
 exports.JobsModule = JobsModule;
 exports.JobsModule = JobsModule = __decorate([
     (0, common_1.Module)({
-        imports: [firecrawl_module_1.FirecrawlModule, email_module_1.EmailModule, hunter_module_1.HunterModule, apollo_module_1.ApolloModule],
+        imports: [firecrawl_module_1.FirecrawlModule, email_module_1.EmailModule, hunter_module_1.HunterModule, apollo_module_1.ApolloModule, auth_module_1.AuthModule],
         controllers: [jobs_controller_1.JobsController],
         providers: [jobs_service_1.JobsService],
         exports: [jobs_service_1.JobsService],

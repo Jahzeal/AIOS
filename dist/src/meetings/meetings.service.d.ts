@@ -4,9 +4,13 @@ export declare class MeetingsService {
     private readonly logger;
     constructor(prisma: PrismaService);
     getLead(leadId: string): Promise<{
-        website: string;
-        companyName: string | null;
+        id: string;
         email: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        jobId: string;
+        companyName: string | null;
+        website: string;
         phone: string | null;
         facebook: string | null;
         instagram: string | null;
@@ -14,30 +18,30 @@ export declare class MeetingsService {
         twitter: string | null;
         address: string | null;
         description: string | null;
-        id: string;
-        jobId: string;
         emailStatus: string | null;
         emailSubject: string | null;
         emailBody: string | null;
         complianceReason: string | null;
         sentAt: Date | null;
-        createdAt: Date;
-        updatedAt: Date;
     } | null>;
     createMeeting(leadId: string, title: string, email: string, meetingLink: string, scheduledAt: string): Promise<{
-        email: string;
         id: string;
+        email: string;
         createdAt: Date;
         leadId: string;
         title: string;
         meetingLink: string;
         scheduledAt: Date;
     }>;
-    findAllMeetings(): Promise<({
+    findAllMeetings(userId?: string): Promise<({
         lead: {
-            website: string;
-            companyName: string | null;
+            id: string;
             email: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            jobId: string;
+            companyName: string | null;
+            website: string;
             phone: string | null;
             facebook: string | null;
             instagram: string | null;
@@ -45,19 +49,15 @@ export declare class MeetingsService {
             twitter: string | null;
             address: string | null;
             description: string | null;
-            id: string;
-            jobId: string;
             emailStatus: string | null;
             emailSubject: string | null;
             emailBody: string | null;
             complianceReason: string | null;
             sentAt: Date | null;
-            createdAt: Date;
-            updatedAt: Date;
         };
     } & {
-        email: string;
         id: string;
+        email: string;
         createdAt: Date;
         leadId: string;
         title: string;

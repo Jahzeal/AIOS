@@ -110,7 +110,7 @@ let HunterService = HunterService_1 = class HunterService {
     generateMockContacts(domain) {
         return [
             { name: 'Dr. James Smith', role: 'Clinical Director & Chief Dentist', email: `jahzealibeh16@gmail.com` },
-            { name: 'Dr. Sarah Jenkins', role: 'Practice Manager', email: `jahzealibeh16@gmail.com` },
+            { name: 'Dr. Sarah Jenkins', role: 'Practice Manager', email: `aukwu@senoraconstruction.com` },
         ];
     }
 };

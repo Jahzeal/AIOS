@@ -35,7 +35,7 @@ export class EmailService {
     this.geminiApiKey = this.configService.get<string>('GEMINI_API_KEY') || '';
     this.resendApiKey = this.configService.get<string>('RESEND_API_KEY') || '';
     this.senderEmail = this.configService.get<string>('SENDER_EMAIL') || 'onboarding@resend.dev';
-    this.meetingBookingLink = this.configService.get<string>('MEETING_BOOKING_LINK') || 'https://calendly.com/aios-sales';
+    this.meetingBookingLink = this.configService.get<string>('MEETING_BOOKING_LINK') || 'https://calendar.app.google/Zg1o5bgrSsUdPgtS8';
 
     this.useGemini = this.geminiApiKey.trim() !== '' && !this.geminiApiKey.startsWith('YOUR_');
     this.isMockOpenai = !this.openaiApiKey || this.openaiApiKey.trim() === '' || this.openaiApiKey.startsWith('YOUR_');
@@ -284,20 +284,27 @@ export class EmailService {
   /**
    * Calculate daily sending limits
    */
-  async getDailyStats(): Promise<EmailStats> {
+  async getDailyStats(userId?: string): Promise<EmailStats> {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+    // Scope lead count to user's jobs when userId is provided
+    let jobIds: string[] | undefined;
+    if (userId) {
+      const userJobs = await this.prisma.job.findMany({ where: { userId }, select: { id: true } });
+      jobIds = userJobs.map(j => j.id);
+    }
+
     const sentCount = await this.prisma.lead.count({
       where: {
+        ...(jobIds !== undefined ? { jobId: { in: jobIds } } : {}),
         emailStatus: 'SENT',
-        sentAt: {
-          gte: startOfToday,
-        },
+        sentAt: { gte: startOfToday },
       },
     });
 
-    const dailyCap = 15;
+    const settings = await this.getSettings(userId);
+    const dailyCap = settings.leadsPerDay ?? 15;
     return {
       sentToday: sentCount,
       dailyCap,
@@ -316,9 +323,18 @@ export class EmailService {
     const greeting = firstName ? `Hi ${firstName},` : `Hello ${lead.companyName || 'Team'},`;
     const roleContext = contact?.role ? `, as ${contact.role} at ${lead.companyName || 'your company'},` : '';
 
+    const settings = await this.getSettings();
+    const corpName = settings.corporateName || 'AIOS Inc.';
+    const corpEmail = settings.email || 'onboarding@resend.dev';
+    const corpPhone = settings.phoneNumber || '';
+    const customTemplate = settings.emailTemplate || 'Exclusive Offer: Free Automation Services for {{company}}';
+
     if (this.useGemini) {
       try {
-        const prompt = `You are a professional B2B Copywriter & Sales Lead Agent. Write a highly personalized cold email pitch offering free automation services.
+        const prompt = `You are a professional B2B Copywriter & Sales Lead Agent representing "${corpName}".
+Write a highly personalized cold email pitch based on this guideline/template prompt:
+"${customTemplate}"
+
 Lead Details:
 - Company Name: ${lead.companyName || 'Unknown'}
 - Website URL: ${lead.website}
@@ -330,11 +346,10 @@ ${contact ? `- Recipient Name: ${contact.name || 'Unknown'}
 
 Instructions:
 1. Start the email with exactly this greeting: "${greeting}"
-2. Reference the recipient's role ("${contact?.role || 'your leadership role'}") naturally in the first sentence.
-3. Write a natural, highly persuasive offer. Focus on solving booking, operational, or marketing gaps.
-4. The email must contain a valid physical address at the bottom: "AIOS Inc., 123 Tech Lane, London, UK"
-5. The email must contain the exact placeholder template: "{{unsubscribe_link}}" in the footer.
-6. Output your response as a valid JSON object. Do not include markdown code block formats in your raw string.
+2. Reference the recipient's role ("${contact?.role || 'your leadership role'}") naturally in the opening.
+3. Incorporate our company details: Name: "${corpName}", Phone: "${corpPhone}", Email: "${corpEmail}".
+4. The email must contain the exact placeholder template: "{{unsubscribe_link}}" in the footer.
+5. Output your response as a valid JSON object. Do not include markdown code block formats in your raw string.
 JSON Format:
 {
   "subject": "Email Subject Line",
@@ -356,21 +371,24 @@ JSON Format:
       const company = lead.companyName || 'your business';
       const industry = lead.job?.query || 'services';
       const loc = lead.job?.location || 'your local area';
-      const subject = `Exclusive Offer: Free Automation Services for ${company}`;
+      const subject = `Exclusive Offer from ${corpName} for ${company}`;
       const body = `<p>${greeting}</p>
-<p>I noticed${roleContext} that ${company} offers <strong>${industry}</strong> in the <strong>${loc}</strong> area. Your website looks outstanding, but we spotted key opportunities to streamline customer inquiries and lead captures using automation tools.</p>
-<p>As part of our local launch, the AIOS team would like to offer you 100% free automation setups — no setup fees, no subscription for the first month. We build custom lead responders and automated booking tools to capture traffic while you sleep.</p>
+<p>I noticed${roleContext} that ${company} offers <strong>${industry}</strong> in the <strong>${loc}</strong> area. Your website looks outstanding, but we spotted key opportunities to streamline customer inquiries using automation tools.</p>
+<p>As part of our local launch, the ${corpName} team would like to offer you free setup — custom lead responders and automated booking tools to capture traffic while you sleep.</p>
 <p>Would you be open to a brief 10-minute demo this week?</p>
 <br/>
 <p>Best regards,</p>
-<p><strong>AI Sales Lead</strong><br/>AIOS Inc., 123 Tech Lane, London, UK</p>
+<p><strong>AI Sales Lead</strong><br/>${corpName}<br/>Phone: ${corpPhone}<br/>Email: ${corpEmail}</p>
 <br/>
 <p style="font-size: 0.8rem; color: #64748b;">If you wish to opt-out of future updates, unsubscribe here: {{unsubscribe_link}}</p>`;
       return { subject, body };
     }
 
     try {
-      const prompt = `You are a professional B2B Copywriter & Sales Lead Agent. Write a highly personalized cold email pitch offering free automation services.
+      const prompt = `You are a professional B2B Copywriter & Sales Lead Agent representing "${corpName}".
+Write a highly personalized cold email pitch based on this guideline/template prompt:
+"${customTemplate}"
+
 Lead Details:
 - Company Name: ${lead.companyName || 'Unknown'}
 - Website URL: ${lead.website}
@@ -383,10 +401,9 @@ ${contact ? `- Recipient Name: ${contact.name || 'Unknown'}
 Instructions:
 1. Start the email with exactly this greeting: "${greeting}"
 2. Reference the recipient's role ("${contact?.role || 'your leadership role'}") naturally in the opening.
-3. Write a natural, highly persuasive offer. Focus on solving booking, operational, or marketing gaps.
-4. The email must contain a valid physical address at the bottom: "AIOS Inc., 123 Tech Lane, London, UK"
-5. The email must contain the exact placeholder template: "{{unsubscribe_link}}" in the footer.
-6. Output your response as a valid JSON object. Do not include markdown code block formats in your raw string.
+3. Incorporate our company details: Name: "${corpName}", Phone: "${corpPhone}", Email: "${corpEmail}".
+4. The email must contain the exact placeholder template: "{{unsubscribe_link}}" in the footer.
+5. Output your response as a valid JSON object. Do not include markdown code block formats in your raw string.
 JSON Format:
 {
   "subject": "Email Subject Line",
@@ -424,6 +441,9 @@ JSON Format:
     subject: string,
     body: string,
   ): Promise<{ isCompliant: boolean; relevanceReason: string; failureReason: string | null }> {
+    const settings = await this.getSettings();
+    const corpName = settings.corporateName || 'AIOS Inc.';
+
     if (this.useGemini) {
       try {
         const prompt = `You are a compliance officer running legal audit checks for CAN-SPAM regulations.
@@ -432,7 +452,7 @@ Subject: "${subject}"
 Body: "${body}"
 
 Checklist rules:
-1. Email body MUST contain a valid street address (e.g. "AIOS Inc., 123 Tech Lane, London, UK" or similar).
+1. Email body MUST contain a valid street address or company signature representing "${corpName}".
 2. Email body MUST contain the exact placeholder tag: "{{unsubscribe_link}}".
 3. Evaluate the business relevance: based on the lead's business description ("${lead.description || ''}"), explain why our outreach is relevant to their business.
 
@@ -459,14 +479,14 @@ JSON Format:
 
     if (this.isMockAnthropic) {
       await this.sleep(1200);
-      const containsAddress = body.includes('123 Tech Lane') || body.includes('London, UK');
+      const containsAddress = body.includes(corpName) || body.includes('123 Tech Lane') || body.includes('London, UK');
       const containsUnsubscribe = body.includes('{{unsubscribe_link}}');
 
       if (!containsAddress) {
         return {
           isCompliant: false,
           relevanceReason: '',
-          failureReason: 'Compliance Rejected: Missing valid company physical address.',
+          failureReason: `Compliance Rejected: Missing valid company signature or address for ${corpName}.`,
         };
       }
       if (!containsUnsubscribe) {
@@ -488,7 +508,7 @@ Subject: "${subject}"
 Body: "${body}"
 
 Checklist rules:
-1. Email body MUST contain a valid street address (e.g. "AIOS Inc., 123 Tech Lane, London, UK" or similar).
+1. Email body MUST contain a valid street address or company signature representing "${corpName}".
 2. Email body MUST contain the exact placeholder tag: "{{unsubscribe_link}}".
 3. Evaluate the business relevance: based on the lead's business description ("${lead.description || ''}"), explain why our outreach is relevant to their business.
 
@@ -561,11 +581,14 @@ JSON Format:
     const unsubscribeUrl = `${appUrl}/api/email/unsubscribe?email=${encodeURIComponent(to)}`;
     const compiledHtml = html.replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl);
 
+    const settings = await this.getSettings();
+    const fromEmail = settings.email || this.senderEmail;
+
     if (this.isMockResend) {
       await this.sleep(1000);
       this.logger.log(`[MOCK EMAIL SENT]
   To: ${to}
-  From: ${this.senderEmail}
+  From: ${fromEmail}
   Subject: ${subject}
   Body Preview: ${compiledHtml.substring(0, 150)}...`);
       return;
@@ -575,7 +598,7 @@ JSON Format:
       await axios.post(
         'https://api.resend.com/emails',
         {
-          from: this.senderEmail,
+          from: fromEmail,
           to: [to],
           subject: subject,
           html: compiledHtml,
@@ -600,59 +623,110 @@ JSON Format:
 
   // --- NEW WORKFLOW METHODS FOR INBOUND EMAIL HANDLING & MEETINGS ---
 
-  private getSettingsPath(): string {
-    return path.join(process.cwd(), 'settings.json');
-  }
-
-  async getSettings() {
-    const settingsPath = this.getSettingsPath();
-    const defaultSettings = {
-      autoRespond: this.configService.get<string>('AUTO_RESPOND') !== 'false',
-      bookingLink: this.configService.get<string>('MEETING_BOOKING_LINK') || 'https://calendly.com/aios-sales',
-    };
-
+  async getSettings(userId?: string) {
     try {
-      if (!fs.existsSync(settingsPath)) {
-        fs.writeFileSync(settingsPath, JSON.stringify(defaultSettings, null, 2));
-        return defaultSettings;
+      // If userId provided, get user-specific settings; otherwise fall back to global first row
+      let settings = userId
+        ? await this.prisma.settings.findFirst({ where: { userId } })
+        : await this.prisma.settings.findFirst();
+
+      if (!settings) {
+        const createData: any = {
+          corporateName: '',
+          email: this.configService.get<string>('SENDER_EMAIL') || 'onboarding@resend.dev',
+          phoneNumber: '',
+          emailTemplate: 'Exclusive Offer: Free Automation Services for {{company}}',
+          leadsPerDay: 15,
+          crawlLocation: '',
+          crawlIndustry: 'Bakery, Cafe, Gym',
+          autoRespond: this.configService.get<string>('AUTO_RESPOND') !== 'false',
+          bookingLink: this.configService.get<string>('MEETING_BOOKING_LINK') || 'https://calendar.app.google/Zg1o5bgrSsUdPgtS8',
+        };
+        if (userId) createData.userId = userId;
+        settings = await this.prisma.settings.create({ data: createData });
       }
-      const data = fs.readFileSync(settingsPath, 'utf8');
-      const parsed = JSON.parse(data);
-      return {
-        autoRespond: parsed.autoRespond !== undefined ? parsed.autoRespond : defaultSettings.autoRespond,
-        bookingLink: parsed.bookingLink || defaultSettings.bookingLink,
-      };
+      return settings;
     } catch (err: any) {
-      this.logger.error(`Error reading settings file: ${err.message}`);
-      return defaultSettings;
+      this.logger.error(`Error reading settings from DB: ${err.message}`);
+      return {
+        id: 'default',
+        corporateName: '',
+        email: this.configService.get<string>('SENDER_EMAIL') || 'onboarding@resend.dev',
+        phoneNumber: '',
+        emailTemplate: 'Exclusive Offer: Free Automation Services for {{company}}',
+        leadsPerDay: 15,
+        crawlLocation: '',
+        crawlIndustry: 'Bakery, Cafe, Gym',
+        autoRespond: true,
+        bookingLink: 'https://calendar.app.google/Zg1o5bgrSsUdPgtS8',
+      } as any;
     }
   }
 
-  async updateSettings(autoRespond: boolean, bookingLink?: string) {
-    const settingsPath = this.getSettingsPath();
-    const current = await this.getSettings();
-    const updated = {
-      autoRespond: autoRespond !== undefined ? autoRespond : current.autoRespond,
-      bookingLink: bookingLink || current.bookingLink,
-    };
-
+  async updateSettings(userId: string | undefined, data: {
+    corporateName?: string;
+    email?: string;
+    phoneNumber?: string;
+    emailTemplate?: string;
+    leadsPerDay?: number;
+    crawlLocation?: string;
+    crawlIndustry?: string;
+    autoRespond?: boolean;
+    bookingLink?: string;
+  }) {
     try {
-      fs.writeFileSync(settingsPath, JSON.stringify(updated, null, 2));
-      return updated;
+      let settings = userId
+        ? await this.prisma.settings.findFirst({ where: { userId } })
+        : await this.prisma.settings.findFirst();
+
+      if (!settings) {
+        const createData: any = {
+          corporateName: data.corporateName ?? '',
+          email: data.email ?? 'onboarding@resend.dev',
+          phoneNumber: data.phoneNumber ?? '',
+          emailTemplate: data.emailTemplate ?? 'Exclusive Offer: Free Automation Services for {{company}}',
+          leadsPerDay: data.leadsPerDay ?? 15,
+          crawlLocation: data.crawlLocation ?? '',
+          crawlIndustry: data.crawlIndustry ?? 'Bakery, Cafe, Gym',
+          autoRespond: data.autoRespond ?? true,
+          bookingLink: data.bookingLink ?? 'https://calendar.app.google/Zg1o5bgrSsUdPgtS8',
+        };
+        if (userId) createData.userId = userId;
+        return await this.prisma.settings.create({ data: createData });
+      }
+
+      return await this.prisma.settings.update({
+        where: { id: settings.id },
+        data: {
+          corporateName: data.corporateName ?? settings.corporateName,
+          email: data.email ?? settings.email,
+          phoneNumber: data.phoneNumber ?? settings.phoneNumber,
+          emailTemplate: data.emailTemplate ?? settings.emailTemplate,
+          leadsPerDay: data.leadsPerDay !== undefined ? Number(data.leadsPerDay) : settings.leadsPerDay,
+          crawlLocation: data.crawlLocation ?? settings.crawlLocation,
+          crawlIndustry: data.crawlIndustry ?? settings.crawlIndustry,
+          autoRespond: data.autoRespond ?? settings.autoRespond,
+          bookingLink: data.bookingLink ?? settings.bookingLink,
+        },
+      });
     } catch (err: any) {
-      this.logger.error(`Error writing settings file: ${err.message}`);
+      this.logger.error(`Error updating settings in DB: ${err.message}`);
       throw new Error(`Failed to save settings: ${err.message}`);
     }
   }
 
-  async getReceivedReplies() {
+  async getReceivedReplies(userId?: string) {
+    let jobIds: string[] | undefined;
+    if (userId) {
+      const userJobs = await this.prisma.job.findMany({ where: { userId }, select: { id: true } });
+      jobIds = userJobs.map(j => j.id);
+    }
     return this.prisma.receivedEmail.findMany({
-      include: {
-        lead: true,
-      },
-      orderBy: {
-        receivedAt: 'desc',
-      },
+      where: jobIds !== undefined
+        ? { lead: { jobId: { in: jobIds } } }
+        : undefined,
+      include: { lead: true },
+      orderBy: { receivedAt: 'desc' },
     });
   }
 
@@ -771,7 +845,7 @@ JSON Format:
         bodyHtml = `<p>Hi, thank you for the outreach.</p><p>Your automation service sounds interesting! Can we schedule a quick call to discuss how it works? Let know if this Thursday works for you.</p><p>Best,<br/>${lead.companyName || 'Manager'}</p>`;
       } else {
         try {
-          const response = await axios.get(`https://api.resend.com/emails/${id}`, {
+          const response = await axios.get(`https://api.resend.com/emails/receiving/${id}`, {
             headers: {
               Authorization: `Bearer ${this.resendApiKey}`,
             },
@@ -779,8 +853,9 @@ JSON Format:
           bodyText = response.data.text || '';
           bodyHtml = response.data.html || '';
         } catch (err: any) {
-          this.logger.error(`Failed to fetch email details from Resend API for ID ${id}: ${err.message}`);
-          bodyText = `Reply received regarding: ${subject}`;
+          const apiErr = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+          this.logger.error(`Failed to fetch email details from Resend API for ID ${id}: ${apiErr}`);
+          bodyText = `Reply received regarding: ${subject} (Error: ${apiErr})`;
           bodyHtml = `<p>${bodyText}</p>`;
         }
       }

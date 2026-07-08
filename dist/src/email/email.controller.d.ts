@@ -2,46 +2,50 @@ import { EmailService } from './email.service';
 export declare class EmailController {
     private readonly emailService;
     constructor(emailService: EmailService);
-    getStatus(): Promise<import("./email.service").EmailStats>;
+    getStatus(req: any): Promise<import("./email.service").EmailStats>;
     getConsentLedger(): Promise<{
-        email: string;
         id: string;
         leadId: string;
         businessName: string;
+        email: string;
         relevanceReason: string;
         checkedAt: Date;
     }[]>;
     getSuppressions(): Promise<{
         id: string;
-        createdAt: Date;
         emailOrDomain: string;
         reason: string | null;
+        createdAt: Date;
     }[]>;
     addSuppression(body: {
         emailOrDomain: string;
         reason?: string;
     }): Promise<{
         id: string;
-        createdAt: Date;
         emailOrDomain: string;
         reason: string | null;
+        createdAt: Date;
     }>;
     removeSuppression(id: string): Promise<{
         id: string;
-        createdAt: Date;
         emailOrDomain: string;
         reason: string | null;
+        createdAt: Date;
     }>;
     triggerEmail(leadId: string): Promise<{
         success: boolean;
         message: string;
     }>;
     unsubscribe(email: string): Promise<string>;
-    getReplies(): Promise<({
+    getReplies(req: any): Promise<({
         lead: {
-            website: string;
-            companyName: string | null;
+            id: string;
+            createdAt: Date;
             email: string | null;
+            updatedAt: Date;
+            jobId: string;
+            companyName: string | null;
+            website: string;
             phone: string | null;
             facebook: string | null;
             instagram: string | null;
@@ -49,23 +53,19 @@ export declare class EmailController {
             twitter: string | null;
             address: string | null;
             description: string | null;
-            id: string;
-            jobId: string;
             emailStatus: string | null;
             emailSubject: string | null;
             emailBody: string | null;
             complianceReason: string | null;
             sentAt: Date | null;
-            createdAt: Date;
-            updatedAt: Date;
         };
     } & {
         id: string;
         createdAt: Date;
-        updatedAt: Date;
         leadId: string;
-        subject: string;
+        updatedAt: Date;
         from: string;
+        subject: string;
         bodyText: string | null;
         bodyHtml: string | null;
         receivedAt: Date;
@@ -82,10 +82,10 @@ export declare class EmailController {
     }): Promise<{
         id: string;
         createdAt: Date;
-        updatedAt: Date;
         leadId: string;
-        subject: string;
+        updatedAt: Date;
         from: string;
+        subject: string;
         bodyText: string | null;
         bodyHtml: string | null;
         receivedAt: Date;
@@ -96,15 +96,21 @@ export declare class EmailController {
     handleWebhook(payload: any): Promise<{
         received: boolean;
     }>;
-    getSettings(): Promise<{
-        autoRespond: any;
-        bookingLink: any;
-    }>;
-    updateSettings(body: {
+    getSettings(req: any): Promise<any>;
+    updateSettings(req: any, body: any): Promise<{
+        id: string;
+        createdAt: Date;
+        email: string;
+        userId: string | null;
+        corporateName: string;
+        phoneNumber: string;
+        emailTemplate: string;
+        leadsPerDay: number;
+        crawlLocation: string;
+        crawlIndustry: string;
+        crawlKeywords: string;
         autoRespond: boolean;
-        bookingLink?: string;
-    }): Promise<{
-        autoRespond: any;
-        bookingLink: any;
+        bookingLink: string;
+        updatedAt: Date;
     }>;
 }

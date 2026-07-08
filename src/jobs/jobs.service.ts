@@ -27,12 +27,14 @@ export class JobsService implements OnModuleInit {
   /**
    * Create a new search-based discovery job (Option 1)
    */
-  async createSearchJob(query: string, location: string) {
+  async createSearchJob(userId: string, query: string, location: string, keywords?: string) {
     const job = await this.prisma.job.create({
       data: {
+        userId,
         type: 'SEARCH',
         query,
         location,
+        keywords,
         status: 'PENDING',
       },
     });
@@ -47,9 +49,10 @@ export class JobsService implements OnModuleInit {
   /**
    * Create a new direct URL list scraping job (Option 2)
    */
-  async createUrlJob(urls: string[]) {
+  async createUrlJob(userId: string, urls: string[]) {
     const job = await this.prisma.job.create({
       data: {
+        userId,
         type: 'URL_LIST',
         status: 'PENDING',
       },
@@ -84,8 +87,9 @@ export class JobsService implements OnModuleInit {
   /**
    * Get all jobs
    */
-  async findAllJobs() {
+  async findAllJobs(userId: string) {
     return this.prisma.job.findMany({
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       include: {
         _count: {
@@ -98,9 +102,9 @@ export class JobsService implements OnModuleInit {
   /**
    * Get single job details including its leads
    */
-  async findOneJob(id: string) {
-    return this.prisma.job.findUnique({
-      where: { id },
+  async findOneJob(userId: string, id: string) {
+    return this.prisma.job.findFirst({
+      where: { id, userId },
       include: {
         leads: {
           orderBy: { companyName: 'asc' },
@@ -115,10 +119,16 @@ export class JobsService implements OnModuleInit {
   /**
    * Get all leads with simple search filtering
    */
-  async findAllLeads(search?: string) {
+  async findAllLeads(userId: string, search?: string) {
+    const userJobIds = (await this.prisma.job.findMany({
+      where: { userId },
+      select: { id: true },
+    })).map(j => j.id);
+
     if (search) {
       return this.prisma.lead.findMany({
         where: {
+          jobId: { in: userJobIds },
           OR: [
             { companyName: { contains: search, mode: 'insensitive' } },
             { website: { contains: search, mode: 'insensitive' } },
@@ -129,6 +139,7 @@ export class JobsService implements OnModuleInit {
         orderBy: { createdAt: 'desc' },
         include: {
           contacts: true,
+          receivedEmails: true,
           job: {
             select: { type: true, query: true, location: true },
           },
@@ -136,9 +147,11 @@ export class JobsService implements OnModuleInit {
       });
     }
     return this.prisma.lead.findMany({
+      where: { jobId: { in: userJobIds } },
       orderBy: { createdAt: 'desc' },
       include: {
         contacts: true,
+        receivedEmails: true,
         job: {
           select: { type: true, query: true, location: true },
         },
@@ -149,7 +162,10 @@ export class JobsService implements OnModuleInit {
   /**
    * Delete job and cascaded leads
    */
-  async deleteJob(id: string) {
+  async deleteJob(userId: string, id: string) {
+    // Ensure the job belongs to this user before deleting
+    const job = await this.prisma.job.findFirst({ where: { id, userId } });
+    if (!job) return { error: 'Not found or not authorized' };
     return this.prisma.job.delete({
       where: { id },
     });
@@ -493,13 +509,21 @@ export class JobsService implements OnModuleInit {
     try {
       this.logger.log(`Enriching Lead ${leadId} (${companyName}) with contacts from Hunter.io + Apollo.io...`);
 
+      // Get the userId from the job associated with the lead
+      const lead = await this.prisma.lead.findUnique({
+        where: { id: leadId },
+        include: { job: true },
+      });
+      const userId = lead?.job?.userId || undefined;
+      const keywords = lead?.job?.keywords || undefined;
+
       // Run both in parallel
       const [hunterContacts, apolloContacts] = await Promise.all([
         this.hunter.findContacts(domain).catch((err) => {
           this.logger.warn(`Hunter.io failed for ${domain}: ${err.message}`);
           return [];
         }),
-        this.apollo.findContacts(domain).catch((err) => {
+        this.apollo.findContacts(domain, userId, keywords).catch((err) => {
           this.logger.warn(`Apollo.io failed for ${domain}: ${err.message}`);
           return [];
         }),

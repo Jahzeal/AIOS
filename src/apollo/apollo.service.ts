@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { PrismaService } from '../prisma/prisma.service';
 
 export interface ApolloContact {
   name: string;
@@ -10,9 +11,10 @@ export interface ApolloContact {
 
 // Decision-maker titles to filter by (Apollo supports title-based search)
 const DECISION_MAKER_TITLES = [
-  'CEO', 'Chief Executive', 'Founder', 'Co-Founder', 'Owner',
-  'President', 'Managing Director', 'Director', 'VP', 'Vice President',
-  'Head of', 'Manager', 'Partner', 'Principal',
+  'CTO', 'Chief Technology Officer', 'VP of Engineering', 'VP Engineering',
+  'Director of Engineering', 'Head of Engineering', 'Tech Lead', 'Technical Lead',
+  'Chief Architect', 'VP of Technology', 'Head of Technology',
+  'VP of IT', 'Head of IT', 'IT Manager', 'Engineering Manager'
 ];
 
 @Injectable()
@@ -21,7 +23,10 @@ export class ApolloService {
   private readonly apiKey: string;
   private readonly isMockMode: boolean;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService
+  ) {
     this.apiKey = this.configService.get<string>('APOLLO_API_KEY') || '';
     this.isMockMode = !this.apiKey || this.apiKey.trim() === '' || this.apiKey.startsWith('YOUR_');
     if (this.isMockMode) {
@@ -34,14 +39,47 @@ export class ApolloService {
   /**
    * Search Apollo.io People Search API for decision-makers at a given domain
    */
-  async findContacts(domain: string): Promise<ApolloContact[]> {
+  async findContacts(domain: string, userId?: string, customKeywords?: string): Promise<ApolloContact[]> {
     const cleanDomain = this.extractDomain(domain);
     if (!cleanDomain) {
       this.logger.error(`Invalid domain format: ${domain}`);
       return [];
     }
 
-    this.logger.log(`Searching Apollo.io for decision-makers at: ${cleanDomain}`);
+    // Load custom titles/keywords from manual job override or settings
+    let targetTitles = DECISION_MAKER_TITLES;
+
+    if (customKeywords && customKeywords.trim()) {
+      const parsedTitles = customKeywords
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean);
+      if (parsedTitles.length > 0) {
+        targetTitles = parsedTitles;
+        this.logger.log(`Using manual job target titles override: ${JSON.stringify(targetTitles)}`);
+      }
+    } else {
+      try {
+        const settings = userId
+          ? await this.prisma.settings.findFirst({ where: { userId } })
+          : await this.prisma.settings.findFirst();
+
+        if (settings && settings.crawlKeywords) {
+          const parsedTitles = settings.crawlKeywords
+            .split(',')
+            .map(t => t.trim())
+            .filter(Boolean);
+          if (parsedTitles.length > 0) {
+            targetTitles = parsedTitles;
+            this.logger.log(`Using custom target titles from user settings crawlKeywords: ${JSON.stringify(targetTitles)}`);
+          }
+        }
+      } catch (e: any) {
+        this.logger.error(`Failed to read search keywords from settings: ${e.message}`);
+      }
+    }
+
+    this.logger.log(`Searching Apollo.io for decision-makers at: ${cleanDomain} targeting titles: ${JSON.stringify(targetTitles)}`);
 
     if (this.isMockMode) {
       await this.sleep(800);
@@ -52,13 +90,18 @@ export class ApolloService {
       const response = await axios.post(
         'https://api.apollo.io/v1/mixed_people/search',
         {
-          api_key: this.apiKey,
           q_organization_domains: [cleanDomain],
-          person_titles: DECISION_MAKER_TITLES,
+          person_titles: targetTitles,
           page: 1,
           per_page: 10,
         },
-        { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' } },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'X-Api-Key': this.apiKey,
+          },
+        },
       );
 
       const people = response.data?.people;

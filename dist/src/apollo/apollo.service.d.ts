@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
 export interface ApolloContact {
     name: string;
     role: string;
@@ -6,11 +7,12 @@ export interface ApolloContact {
 }
 export declare class ApolloService {
     private configService;
+    private prisma;
     private readonly logger;
     private readonly apiKey;
     private readonly isMockMode;
-    constructor(configService: ConfigService);
-    findContacts(domain: string): Promise<ApolloContact[]>;
+    constructor(configService: ConfigService, prisma: PrismaService);
+    findContacts(domain: string, userId?: string, customKeywords?: string): Promise<ApolloContact[]>;
     private extractDomain;
     private sleep;
 }
