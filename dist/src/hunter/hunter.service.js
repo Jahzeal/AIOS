@@ -49,7 +49,7 @@ let HunterService = HunterService_1 = class HunterService {
                 params: {
                     domain: cleanDomain,
                     api_key: this.apiKey,
-                    limit: 15,
+                    limit: 10,
                 },
             });
             if (response.data && response.data.data && Array.isArray(response.data.data.emails)) {
@@ -60,6 +60,7 @@ let HunterService = HunterService_1 = class HunterService {
                     name: `${e.first_name || ''} ${e.last_name || ''}`.trim(),
                     role: e.position || 'Manager',
                     email: e.value,
+                    phone: e.phone_number || undefined,
                 }));
                 this.logger.log(`Hunter.io found ${contacts.length} contacts for ${cleanDomain}`);
                 return contacts;
@@ -89,8 +90,8 @@ let HunterService = HunterService_1 = class HunterService {
     }
     generateMockContacts(domain) {
         return [
-            { name: 'Dr. James Smith', role: 'Clinical Director & Chief Dentist', email: `jahzealibeh16@gmail.com` },
-            { name: 'Dr. Sarah Jenkins', role: 'Practice Manager', email: `aukwu@senoraconstruction.com` },
+            { name: 'Dr. James Smith', role: 'Clinical Director & Chief Dentist', email: `jahzealibeh16@gmail.com`, phone: '+44 20 7946 0199' },
+            { name: 'Dr. Sarah Jenkins', role: 'Practice Manager', email: `aukwu@senoraconstruction.com`, phone: '+44 20 7946 0233' },
         ];
     }
 };

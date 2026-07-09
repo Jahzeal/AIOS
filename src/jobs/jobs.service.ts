@@ -587,7 +587,20 @@ export class JobsService implements OnModuleInit {
           const beforeFilterCount = mergedContacts.length;
           mergedContacts = mergedContacts.filter(c => {
             const roleLower = (c.role || '').toLowerCase();
-            return titleKeywords.some(keyword => roleLower.includes(keyword));
+            return titleKeywords.some(keyword => {
+              // 1. Direct substring match (e.g., "cto" matches "CTO" or "director" matches "director of it")
+              if (roleLower.includes(keyword)) return true;
+              
+              // 2. Dynamic Acronym Matching (e.g., "cto" matches "Chief Technology Officer")
+              // Split role into words, ignoring common B2B stopwords
+              const words = roleLower.split(/[\s\-\/]+/).filter(w => w && w !== 'of' && w !== 'and' && w !== 'the');
+              const initials = words.map(w => w.charAt(0)).join('');
+              
+              // Check if the acronym matches or contains the keyword
+              if (initials === keyword || initials.includes(keyword)) return true;
+              
+              return false;
+            });
           });
           this.logger.log(`Filtered contacts by target titles [${titleKeywords.join(', ')}]: kept ${mergedContacts.length} of ${beforeFilterCount} contacts.`);
         }
@@ -623,6 +636,7 @@ export class JobsService implements OnModuleInit {
               name: contact.name,
               role: contact.role,
               email: contact.email,
+              phone: contact.phone || null,
               linkedin: matchedLinkedinUrl,
             },
           });

@@ -4,6 +4,7 @@ export interface ApolloContact {
     name: string;
     role: string;
     email: string;
+    phone?: string;
 }
 export declare class ApolloService {
     private configService;

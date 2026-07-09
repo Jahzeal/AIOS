@@ -6,6 +6,7 @@ export interface HunterContact {
   name: string;
   role: string;
   email: string;
+  phone?: string;
 }
 
 @Injectable()
@@ -47,7 +48,7 @@ export class HunterService {
         params: {
           domain: cleanDomain,
           api_key: this.apiKey,
-          limit: 15,
+          limit: 10,
         },
       });
 
@@ -59,6 +60,7 @@ export class HunterService {
             name: `${e.first_name || ''} ${e.last_name || ''}`.trim(),
             role: e.position || 'Manager',
             email: e.value,
+            phone: e.phone_number || undefined,
           }));
 
         this.logger.log(`Hunter.io found ${contacts.length} contacts for ${cleanDomain}`);
@@ -90,8 +92,8 @@ export class HunterService {
 
   private generateMockContacts(domain: string): HunterContact[] {
     return [
-      { name: 'Dr. James Smith',   role: 'Clinical Director & Chief Dentist', email: `jahzealibeh16@gmail.com` },
-      { name: 'Dr. Sarah Jenkins', role: 'Practice Manager',                  email: `aukwu@senoraconstruction.com` },
+      { name: 'Dr. James Smith',   role: 'Clinical Director & Chief Dentist', email: `jahzealibeh16@gmail.com`,   phone: '+44 20 7946 0199' },
+      { name: 'Dr. Sarah Jenkins', role: 'Practice Manager',                  email: `aukwu@senoraconstruction.com`, phone: '+44 20 7946 0233' },
     ];
   }
 }

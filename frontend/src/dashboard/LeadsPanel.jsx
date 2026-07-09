@@ -20,6 +20,14 @@ export default function LeadsPanel({ token, leads, jobs, leadFilterJobId, setLea
     }));
   };
 
+  const getTargetTitle = (l) => {
+    const job = jobs?.find(j => j.id === l.jobId);
+    if (job?.keywords && job.keywords.trim()) {
+      return job.keywords.split(',')[0].trim();
+    }
+    return "decision maker";
+  };
+
   const filteredLeads = leadFilterJobId
     ? leads.filter(l => l.jobId === leadFilterJobId)
     : leads;
@@ -123,10 +131,42 @@ export default function LeadsPanel({ token, leads, jobs, leadFilterJobId, setLea
                       )}
                     </td>
                     <td style={T.td}>
-                      {l.phone || '—'}
+                      {l.contacts?.[0]?.phone ? (
+                        <>
+                          <div>{l.contacts[0].phone}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'rgba(99, 102, 241, 0.75)', fontWeight: 600, marginTop: '2px' }}>
+                            Direct ({l.contacts[0].name.split(' ')[0]})
+                          </div>
+                        </>
+                      ) : l.phone ? (
+                        <>
+                          <div>{l.phone}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'rgba(239, 68, 68, 0.65)', fontWeight: 500, marginTop: '2px' }}>
+                            ⚠️ No {getTargetTitle(l)} found (using company phone)
+                          </div>
+                        </>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                     <td style={T.td}>
-                      {l.email || '—'}
+                      {l.contacts?.[0]?.email ? (
+                        <>
+                          <div>{l.contacts[0].email}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'rgba(99, 102, 241, 0.75)', fontWeight: 600, marginTop: '2px' }}>
+                            Direct ({l.contacts[0].name.split(' ')[0]})
+                          </div>
+                        </>
+                      ) : l.email ? (
+                        <>
+                          <div>{l.email}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'rgba(239, 68, 68, 0.65)', fontWeight: 500, marginTop: '2px' }}>
+                            ⚠️ No {getTargetTitle(l)} found (using company email)
+                          </div>
+                        </>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                     <td style={T.td}><StatusBadge status={l.emailStatus || 'PENDING'} /></td>
                     <td style={T.td}>
@@ -175,11 +215,14 @@ export default function LeadsPanel({ token, leads, jobs, leadFilterJobId, setLea
                                   </div>
                                   <div>
                                     <div style={{ fontSize: '0.75rem', color: '#a5b4fc' }}>{c.email || '—'}</div>
+                                    <div style={{ fontSize: '0.72rem', color: 'rgba(248, 250, 252, 0.45)', marginTop: '2px' }}>
+                                      {c.phone ? `Phone: ${c.phone}` : 'No direct phone'}
+                                    </div>
                                     {c.linkedin && (
                                       <a 
                                         href={c.linkedin} target="_blank" rel="noreferrer" 
                                         onClick={e => e.stopPropagation()}
-                                        style={{ fontSize: '0.68rem', color: '#818cf8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', marginTop: '2px' }}
+                                        style={{ fontSize: '0.68rem', color: '#818cf8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', marginTop: '4px' }}
                                       >
                                         LinkedIn Profile
                                       </a>

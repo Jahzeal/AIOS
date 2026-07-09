@@ -3,6 +3,7 @@ export interface HunterContact {
     name: string;
     role: string;
     email: string;
+    phone?: string;
 }
 export declare class HunterService {
     private configService;

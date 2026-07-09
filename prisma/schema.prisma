@@ -54,6 +54,7 @@ model Contact {
   name        String?
   role        String?
   email       String?
+  phone       String?
   linkedin    String?
   emailStatus String?   @default("PENDING") // PENDING, SENT, FAILED, SKIPPED_SUPPRESSED
   sentAt      DateTime?
@@ -125,8 +126,8 @@ model Settings {
   emailTemplate  String   @default("Exclusive Offer: Free Automation Services for {{company}}")
   leadsPerDay    Int      @default(15)
   crawlLocation  String   @default("")
-  crawlIndustry  String   @default("Bakery, Cafe, Gym")
-  crawlKeywords  String   @default("CTO, Chief Technology Officer, VP of Engineering, VP Engineering, Director of Engineering, Head of Engineering, Tech Lead, Technical Lead, Chief Architect, VP of Technology, Head of Technology, VP of IT, Head of IT, IT Manager, Engineering Manager")
+  crawlIndustry  String   @default("")
+  crawlKeywords  String   @default("")
   autoRespond    Boolean  @default(true)
   bookingLink    String   @default("https://calendar.app.google/Zg1o5bgrSsUdPgtS8")
   createdAt      DateTime @default(now())

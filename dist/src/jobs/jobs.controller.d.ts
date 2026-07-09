@@ -56,6 +56,7 @@ export declare class JobsController {
                 createdAt: Date;
                 updatedAt: Date;
                 name: string | null;
+                phone: string | null;
                 linkedin: string | null;
                 emailStatus: string | null;
                 sentAt: Date | null;
@@ -121,6 +122,7 @@ export declare class JobsController {
             createdAt: Date;
             updatedAt: Date;
             name: string | null;
+            phone: string | null;
             linkedin: string | null;
             emailStatus: string | null;
             sentAt: Date | null;

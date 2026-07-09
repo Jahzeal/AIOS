@@ -505,7 +505,15 @@ let JobsService = JobsService_1 = class JobsService {
                     const beforeFilterCount = mergedContacts.length;
                     mergedContacts = mergedContacts.filter(c => {
                         const roleLower = (c.role || '').toLowerCase();
-                        return titleKeywords.some(keyword => roleLower.includes(keyword));
+                        return titleKeywords.some(keyword => {
+                            if (roleLower.includes(keyword))
+                                return true;
+                            const words = roleLower.split(/[\s\-\/]+/).filter(w => w && w !== 'of' && w !== 'and' && w !== 'the');
+                            const initials = words.map(w => w.charAt(0)).join('');
+                            if (initials === keyword || initials.includes(keyword))
+                                return true;
+                            return false;
+                        });
                     });
                     this.logger.log(`Filtered contacts by target titles [${titleKeywords.join(', ')}]: kept ${mergedContacts.length} of ${beforeFilterCount} contacts.`);
                 }
@@ -535,6 +543,7 @@ let JobsService = JobsService_1 = class JobsService {
                             name: contact.name,
                             role: contact.role,
                             email: contact.email,
+                            phone: contact.phone || null,
                             linkedin: matchedLinkedinUrl,
                         },
                     });

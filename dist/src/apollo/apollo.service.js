@@ -106,6 +106,7 @@ let ApolloService = ApolloService_1 = class ApolloService {
                 name: `${p.first_name || ''} ${p.last_name || ''}`.trim(),
                 role: p.title || 'Manager',
                 email: p.email,
+                phone: p.phone_numbers?.[0]?.raw_number || undefined,
             }));
             this.logger.log(`Apollo.io found ${contacts.length} decision-maker contacts for ${cleanDomain}`);
             return contacts;
