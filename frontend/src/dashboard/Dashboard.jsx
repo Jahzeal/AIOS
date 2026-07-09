@@ -64,7 +64,6 @@ export default function Dashboard({ token, onLogout }) {
     if (settings) {
       setFilterIndustry(prev => prev || settings.crawlIndustry || '');
       setFilterLocation(prev => prev || settings.crawlLocation || '');
-      setFilterTitles(prev => prev || settings.crawlKeywords || '');
     }
   }, [settings]);
 
@@ -135,6 +134,19 @@ export default function Dashboard({ token, onLogout }) {
     setGoogleConnection(null);
     if (token) loadAll();
   }, [token]);
+
+  // Automatic polling for active scraping jobs (every 5 seconds)
+  useEffect(() => {
+    if (!token) return;
+    const hasActiveJobs = jobs.some(j => j.status === 'PENDING' || j.status === 'PROCESSING');
+    if (!hasActiveJobs) return;
+
+    const interval = setInterval(() => {
+      loadAll();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [jobs, token, loadAll]);
 
   // Handle Google Calendar Connection code redirect
   useEffect(() => {
