@@ -2,12 +2,25 @@ import { MeetingsService } from './meetings.service';
 export declare class MeetingsController {
     private readonly meetingsService;
     constructor(meetingsService: MeetingsService);
-    renderBookingPage(leadId: string): Promise<string>;
     createMeeting(body: {
         leadId: string;
         title: string;
         email: string;
         meetingLink: string;
+        scheduledAt: string;
+    }): Promise<{
+        id: string;
+        email: string;
+        createdAt: Date;
+        leadId: string;
+        title: string;
+        meetingLink: string;
+        scheduledAt: Date;
+    }>;
+    handleCalendarWebhook(body: {
+        email: string;
+        title?: string;
+        meetingLink?: string;
         scheduledAt: string;
     }): Promise<{
         id: string;

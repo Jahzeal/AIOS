@@ -52,6 +52,37 @@ export class MeetingsService {
     return meeting;
   }
 
+  async createMeetingByEmail(
+    email: string,
+    title: string,
+    meetingLink: string,
+    scheduledAt: string,
+  ) {
+    const targetEmail = email.trim().toLowerCase();
+    this.logger.log(`Received webhook booking request for email: ${targetEmail}`);
+
+    // 1. Look up contact list
+    const contact = await this.prisma.contact.findFirst({
+      where: { email: { equals: targetEmail, mode: 'insensitive' } },
+    });
+
+    let leadId = contact?.leadId || null;
+
+    // 2. If not found, look up generic lead list
+    if (!leadId) {
+      const lead = await this.prisma.lead.findFirst({
+        where: { email: { equals: targetEmail, mode: 'insensitive' } },
+      });
+      leadId = lead?.id || null;
+    }
+
+    if (!leadId) {
+      throw new NotFoundException(`No lead or contact found with email: ${targetEmail}`);
+    }
+
+    return this.createMeeting(leadId, title, targetEmail, meetingLink, scheduledAt);
+  }
+
   async findAllMeetings(userId?: string) {
     return this.prisma.upcomingMeeting.findMany({
       where: userId

@@ -49,6 +49,24 @@ let MeetingsService = MeetingsService_1 = class MeetingsService {
         });
         return meeting;
     }
+    async createMeetingByEmail(email, title, meetingLink, scheduledAt) {
+        const targetEmail = email.trim().toLowerCase();
+        this.logger.log(`Received webhook booking request for email: ${targetEmail}`);
+        const contact = await this.prisma.contact.findFirst({
+            where: { email: { equals: targetEmail, mode: 'insensitive' } },
+        });
+        let leadId = contact?.leadId || null;
+        if (!leadId) {
+            const lead = await this.prisma.lead.findFirst({
+                where: { email: { equals: targetEmail, mode: 'insensitive' } },
+            });
+            leadId = lead?.id || null;
+        }
+        if (!leadId) {
+            throw new common_1.NotFoundException(`No lead or contact found with email: ${targetEmail}`);
+        }
+        return this.createMeeting(leadId, title, targetEmail, meetingLink, scheduledAt);
+    }
     async findAllMeetings(userId) {
         return this.prisma.upcomingMeeting.findMany({
             where: userId

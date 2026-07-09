@@ -33,6 +33,15 @@ export declare class MeetingsService {
         meetingLink: string;
         scheduledAt: Date;
     }>;
+    createMeetingByEmail(email: string, title: string, meetingLink: string, scheduledAt: string): Promise<{
+        id: string;
+        email: string;
+        createdAt: Date;
+        leadId: string;
+        title: string;
+        meetingLink: string;
+        scheduledAt: Date;
+    }>;
     findAllMeetings(userId?: string): Promise<({
         lead: {
             id: string;
