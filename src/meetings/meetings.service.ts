@@ -20,7 +20,9 @@ export class MeetingsService {
     meetingLink: string,
     scheduledAt: string,
   ) {
-    this.logger.log(`Booking meeting for Lead: ${leadId}, scheduled at: ${scheduledAt}`);
+    this.logger.log(
+      `Booking meeting for Lead: ${leadId}, scheduled at: ${scheduledAt}`,
+    );
 
     const lead = await this.prisma.lead.findUnique({
       where: { id: leadId },
@@ -59,7 +61,9 @@ export class MeetingsService {
     scheduledAt: string,
   ) {
     const targetEmail = email.trim().toLowerCase();
-    this.logger.log(`Received webhook booking request for email: ${targetEmail}`);
+    this.logger.log(
+      `Received webhook booking request for email: ${targetEmail}`,
+    );
 
     // 1. Look up contact list
     const contact = await this.prisma.contact.findFirst({
@@ -77,18 +81,36 @@ export class MeetingsService {
     }
 
     if (!leadId) {
-      throw new NotFoundException(`No lead or contact found with email: ${targetEmail}`);
+      throw new NotFoundException(
+        `No lead or contact found with email: ${targetEmail}`,
+      );
     }
 
-    return this.createMeeting(leadId, title, targetEmail, meetingLink, scheduledAt);
+    return this.createMeeting(
+      leadId,
+      title,
+      targetEmail,
+      meetingLink,
+      scheduledAt,
+    );
   }
 
   async findAllMeetings(userId?: string) {
     return this.prisma.upcomingMeeting.findMany({
-      where: userId
-        ? { lead: { job: { userId } } }
-        : undefined,
-      include: { lead: true },
+      where: userId ? { lead: { job: { userId } } } : undefined,
+      include: {
+        lead: {
+          include: {
+            job: {
+              include: {
+                user: {
+                  select: { username: true, email: true },
+                },
+              },
+            },
+          },
+        },
+      },
       orderBy: { scheduledAt: 'asc' },
     });
   }

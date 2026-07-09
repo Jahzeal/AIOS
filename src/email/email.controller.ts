@@ -1,4 +1,17 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  HttpCode,
+  HttpStatus,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { EmailService } from './email.service';
 import { AuthGuard } from '../auth/auth.guard';
 
@@ -26,7 +39,9 @@ export class EmailController {
 
   @Post('suppressions')
   @UseGuards(AuthGuard)
-  async addSuppression(@Body() body: { emailOrDomain: string; reason?: string }) {
+  async addSuppression(
+    @Body() body: { emailOrDomain: string; reason?: string },
+  ) {
     return this.emailService.addSuppression(body.emailOrDomain, body.reason);
   }
 
@@ -48,9 +63,12 @@ export class EmailController {
   @Get('unsubscribe')
   async unsubscribe(@Query('email') email: string) {
     if (email && email.trim() !== '') {
-      await this.emailService.addSuppression(email, 'User clicked unsubscribe link');
+      await this.emailService.addSuppression(
+        email,
+        'User clicked unsubscribe link',
+      );
     }
-    
+
     return `
       <!DOCTYPE html>
       <html>
@@ -122,7 +140,7 @@ export class EmailController {
   @Post('webhook/received')
   @HttpCode(HttpStatus.OK)
   async handleWebhook(@Body() payload: any) {
-    this.emailService.processInboundWebhook(payload).catch(err => {
+    this.emailService.processInboundWebhook(payload).catch((err) => {
       console.error('Error processing inbound webhook:', err);
     });
     return { received: true };

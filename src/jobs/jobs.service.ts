@@ -27,7 +27,12 @@ export class JobsService implements OnModuleInit {
   /**
    * Create a new search-based discovery job (Option 1)
    */
-  async createSearchJob(userId: string, query: string, location: string, keywords?: string) {
+  async createSearchJob(
+    userId: string,
+    query: string,
+    location: string,
+    keywords?: string,
+  ) {
     const job = await this.prisma.job.create({
       data: {
         userId,
@@ -38,7 +43,9 @@ export class JobsService implements OnModuleInit {
         status: 'PENDING',
       },
     });
-    this.logger.log(`Created Search Job: ${job.id} for "${query}" in "${location}"`);
+    this.logger.log(
+      `Created Search Job: ${job.id} for "${query}" in "${location}"`,
+    );
     // Trigger queue processing asynchronously
     this.processQueue().catch((err) =>
       this.logger.error('Error triggering queue process:', err),
@@ -76,7 +83,7 @@ export class JobsService implements OnModuleInit {
 
     await Promise.all(leadPromises);
     this.logger.log(`Created URL List Job: ${job.id} with ${urls.length} URLs`);
-    
+
     // Trigger queue processing asynchronously
     this.processQueue().catch((err) =>
       this.logger.error('Error triggering queue process:', err),
@@ -120,10 +127,12 @@ export class JobsService implements OnModuleInit {
    * Get all leads with simple search filtering
    */
   async findAllLeads(userId: string, search?: string) {
-    const userJobIds = (await this.prisma.job.findMany({
-      where: { userId },
-      select: { id: true },
-    })).map(j => j.id);
+    const userJobIds = (
+      await this.prisma.job.findMany({
+        where: { userId },
+        select: { id: true },
+      })
+    ).map((j) => j.id);
 
     if (search) {
       return this.prisma.lead.findMany({
@@ -207,8 +216,10 @@ export class JobsService implements OnModuleInit {
         return;
       }
 
-      this.logger.log(`Background runner picking up job: ${job.id} (${job.type})`);
-      
+      this.logger.log(
+        `Background runner picking up job: ${job.id} (${job.type})`,
+      );
+
       // Update status to PROCESSING
       await this.prisma.job.update({
         where: { id: job.id },
@@ -234,7 +245,9 @@ export class JobsService implements OnModuleInit {
     try {
       // 1. Perform Firecrawl search
       const domains = await this.firecrawl.search(job.query, job.location);
-      this.logger.log(`Job ${job.id}: Firecrawl search returned ${domains.length} target domains.`);
+      this.logger.log(
+        `Job ${job.id}: Firecrawl search returned ${domains.length} target domains.`,
+      );
 
       if (domains.length === 0) {
         await this.prisma.job.update({
@@ -266,9 +279,17 @@ export class JobsService implements OnModuleInit {
       for (const lead of pendingLeads) {
         try {
           // Check if job was cancelled/stopped
-          const currentJob = await this.prisma.job.findUnique({ where: { id: job.id } });
-          if (!currentJob || currentJob.status === 'FAILED' || currentJob.status === 'COMPLETED') {
-            this.logger.log(`Job ${job.id} was stopped or failed. Aborting lead scraping loop.`);
+          const currentJob = await this.prisma.job.findUnique({
+            where: { id: job.id },
+          });
+          if (
+            !currentJob ||
+            currentJob.status === 'FAILED' ||
+            currentJob.status === 'COMPLETED'
+          ) {
+            this.logger.log(
+              `Job ${job.id} was stopped or failed. Aborting lead scraping loop.`,
+            );
             break;
           }
 
@@ -283,7 +304,9 @@ export class JobsService implements OnModuleInit {
           });
 
           if (cachedLead) {
-            this.logger.log(`Found cached scrape result for ${lead.website}. Skipping live crawl.`);
+            this.logger.log(
+              `Found cached scrape result for ${lead.website}. Skipping live crawl.`,
+            );
             const hasEmail = cachedLead.email && cachedLead.email.trim() !== '';
             if (!hasEmail) {
               await this.prisma.lead.delete({
@@ -321,10 +344,18 @@ export class JobsService implements OnModuleInit {
               }
 
               const settings = await this.emailService.getSettings();
-              if (settings.autoRespond && updatedLead.email && updatedLead.email.trim() !== '') {
-                this.emailService.processEmailPipeline(updatedLead.id).catch((err) =>
-                  this.logger.error(`Failed executing email pipeline: ${err.message}`),
-                );
+              if (
+                settings.autoRespond &&
+                updatedLead.email &&
+                updatedLead.email.trim() !== ''
+              ) {
+                this.emailService
+                  .processEmailPipeline(updatedLead.id)
+                  .catch((err) =>
+                    this.logger.error(
+                      `Failed executing email pipeline: ${err.message}`,
+                    ),
+                  );
               }
             }
             continue;
@@ -334,8 +365,17 @@ export class JobsService implements OnModuleInit {
           const scrapedData = await this.firecrawl.scrape(lead.website);
 
           // Post-scrape relevance gate: discard leads unrelated to the search query
-          if (job.query && !this.firecrawl.isRelevantToQuery(job.query, scrapedData.description || '', scrapedData.companyName)) {
-            this.logger.warn(`Job ${job.id}: Discarding irrelevant result "${scrapedData.companyName}" (not related to "${job.query}")`);
+          if (
+            job.query &&
+            !this.firecrawl.isRelevantToQuery(
+              job.query,
+              scrapedData.description || '',
+              scrapedData.companyName,
+            )
+          ) {
+            this.logger.warn(
+              `Job ${job.id}: Discarding irrelevant result "${scrapedData.companyName}" (not related to "${job.query}")`,
+            );
             await this.prisma.lead.delete({ where: { id: lead.id } });
             continue;
           }
@@ -356,20 +396,30 @@ export class JobsService implements OnModuleInit {
           });
 
           // Enrich lead with contacts from Hunter.io and Apollo
-          const enrichedContacts = await this.enrichLeadWithContacts(lead.id, lead.website, scrapedData.companyName);
+          const enrichedContacts = await this.enrichLeadWithContacts(
+            lead.id,
+            lead.website,
+            scrapedData.companyName,
+          );
 
           const settings = await this.emailService.getSettings();
-          const hasContactsOrEmail = (enrichedContacts && enrichedContacts > 0) || (updatedLead.email && updatedLead.email.trim() !== '');
+          const hasContactsOrEmail =
+            (enrichedContacts && enrichedContacts > 0) ||
+            (updatedLead.email && updatedLead.email.trim() !== '');
           if (settings.autoRespond && hasContactsOrEmail) {
             try {
               await this.emailService.processEmailPipeline(updatedLead.id);
               await new Promise((resolve) => setTimeout(resolve, 4000));
             } catch (err: any) {
-              this.logger.error(`Failed executing email pipeline: ${err.message}`);
+              this.logger.error(
+                `Failed executing email pipeline: ${err.message}`,
+              );
             }
           }
         } catch (scrapeErr: any) {
-          this.logger.error(`Job ${job.id}: Failed to scrape domain ${lead.website} - ${scrapeErr.message}`);
+          this.logger.error(
+            `Job ${job.id}: Failed to scrape domain ${lead.website} - ${scrapeErr.message}`,
+          );
           await this.prisma.lead.update({
             where: { id: lead.id },
             data: {
@@ -410,9 +460,17 @@ export class JobsService implements OnModuleInit {
       for (const lead of pendingLeads) {
         try {
           // Check if job was cancelled/stopped
-          const currentJob = await this.prisma.job.findUnique({ where: { id: job.id } });
-          if (!currentJob || currentJob.status === 'FAILED' || currentJob.status === 'COMPLETED') {
-            this.logger.log(`Job ${job.id} was stopped or failed. Aborting URL scraping loop.`);
+          const currentJob = await this.prisma.job.findUnique({
+            where: { id: job.id },
+          });
+          if (
+            !currentJob ||
+            currentJob.status === 'FAILED' ||
+            currentJob.status === 'COMPLETED'
+          ) {
+            this.logger.log(
+              `Job ${job.id} was stopped or failed. Aborting URL scraping loop.`,
+            );
             break;
           }
 
@@ -427,7 +485,9 @@ export class JobsService implements OnModuleInit {
           });
 
           if (cachedLead) {
-            this.logger.log(`Found cached scrape result for ${lead.website}. Skipping live crawl.`);
+            this.logger.log(
+              `Found cached scrape result for ${lead.website}. Skipping live crawl.`,
+            );
             const hasEmail = cachedLead.email && cachedLead.email.trim() !== '';
             if (!hasEmail) {
               await this.prisma.lead.delete({
@@ -465,10 +525,18 @@ export class JobsService implements OnModuleInit {
               }
 
               const settings = await this.emailService.getSettings();
-              if (settings.autoRespond && updatedLead.email && updatedLead.email.trim() !== '') {
-                this.emailService.processEmailPipeline(updatedLead.id).catch((err) =>
-                  this.logger.error(`Failed executing email pipeline: ${err.message}`),
-                );
+              if (
+                settings.autoRespond &&
+                updatedLead.email &&
+                updatedLead.email.trim() !== ''
+              ) {
+                this.emailService
+                  .processEmailPipeline(updatedLead.id)
+                  .catch((err) =>
+                    this.logger.error(
+                      `Failed executing email pipeline: ${err.message}`,
+                    ),
+                  );
               }
             }
             continue;
@@ -493,20 +561,30 @@ export class JobsService implements OnModuleInit {
           });
 
           // Enrich lead with contacts from Hunter.io and Apollo
-          const enrichedContacts2 = await this.enrichLeadWithContacts(lead.id, lead.website, scrapedData.companyName);
+          const enrichedContacts2 = await this.enrichLeadWithContacts(
+            lead.id,
+            lead.website,
+            scrapedData.companyName,
+          );
 
           const settings = await this.emailService.getSettings();
-          const hasContactsOrEmail2 = (enrichedContacts2 > 0) || (updatedLead.email && updatedLead.email.trim() !== '');
+          const hasContactsOrEmail2 =
+            enrichedContacts2 > 0 ||
+            (updatedLead.email && updatedLead.email.trim() !== '');
           if (settings.autoRespond && hasContactsOrEmail2) {
             try {
               await this.emailService.processEmailPipeline(updatedLead.id);
               await new Promise((resolve) => setTimeout(resolve, 4000));
             } catch (err: any) {
-              this.logger.error(`Failed executing email pipeline: ${err.message}`);
+              this.logger.error(
+                `Failed executing email pipeline: ${err.message}`,
+              );
             }
           }
         } catch (scrapeErr: any) {
-          this.logger.error(`Job ${job.id}: Failed to scrape domain ${lead.website} - ${scrapeErr.message}`);
+          this.logger.error(
+            `Job ${job.id}: Failed to scrape domain ${lead.website} - ${scrapeErr.message}`,
+          );
           await this.prisma.lead.update({
             where: { id: lead.id },
             data: {
@@ -535,9 +613,15 @@ export class JobsService implements OnModuleInit {
     }
   }
 
-  private async enrichLeadWithContacts(leadId: string, domain: string, companyName: string): Promise<number> {
+  private async enrichLeadWithContacts(
+    leadId: string,
+    domain: string,
+    companyName: string,
+  ): Promise<number> {
     try {
-      this.logger.log(`Enriching Lead ${leadId} (${companyName}) with contacts from Hunter.io + Apollo.io...`);
+      this.logger.log(
+        `Enriching Lead ${leadId} (${companyName}) with contacts from Hunter.io + Apollo.io...`,
+      );
 
       // Get the userId from the job associated with the lead
       const lead = await this.prisma.lead.findUnique({
@@ -561,12 +645,14 @@ export class JobsService implements OnModuleInit {
 
       // Merge and deduplicate by email (case-insensitive)
       const seen = new Set<string>();
-      let mergedContacts = [...hunterContacts, ...apolloContacts].filter((c) => {
-        const key = c.email.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+      let mergedContacts = [...hunterContacts, ...apolloContacts].filter(
+        (c) => {
+          const key = c.email.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        },
+      );
 
       // Filter contacts by keywords (target titles) if defined
       let filterKeywords = keywords;
@@ -582,52 +668,68 @@ export class JobsService implements OnModuleInit {
       }
 
       if (filterKeywords && filterKeywords.trim()) {
-        const titleKeywords = filterKeywords.split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
+        const titleKeywords = filterKeywords
+          .split(',')
+          .map((k) => k.trim().toLowerCase())
+          .filter(Boolean);
         if (titleKeywords.length > 0) {
           const beforeFilterCount = mergedContacts.length;
-          mergedContacts = mergedContacts.filter(c => {
+          mergedContacts = mergedContacts.filter((c) => {
             const roleLower = (c.role || '').toLowerCase();
-            return titleKeywords.some(keyword => {
+            return titleKeywords.some((keyword) => {
               // 1. Direct substring match (e.g., "cto" matches "CTO" or "director" matches "director of it")
               if (roleLower.includes(keyword)) return true;
-              
+
               // 2. Dynamic Acronym Matching (e.g., "cto" matches "Chief Technology Officer")
               // Split role into words, ignoring common B2B stopwords
-              const words = roleLower.split(/[\s\-\/]+/).filter(w => w && w !== 'of' && w !== 'and' && w !== 'the');
-              const initials = words.map(w => w.charAt(0)).join('');
-              
+              const words = roleLower
+                .split(/[\s\-\/]+/)
+                .filter((w) => w && w !== 'of' && w !== 'and' && w !== 'the');
+              const initials = words.map((w) => w.charAt(0)).join('');
+
               // Check if the acronym matches or contains the keyword
-              if (initials === keyword || initials.includes(keyword)) return true;
-              
+              if (initials === keyword || initials.includes(keyword))
+                return true;
+
               return false;
             });
           });
-          this.logger.log(`Filtered contacts by target titles [${titleKeywords.join(', ')}]: kept ${mergedContacts.length} of ${beforeFilterCount} contacts.`);
+          this.logger.log(
+            `Filtered contacts by target titles [${titleKeywords.join(', ')}]: kept ${mergedContacts.length} of ${beforeFilterCount} contacts.`,
+          );
         }
       }
 
       this.logger.log(
         `Hunter: ${hunterContacts.length}, Apollo: ${apolloContacts.length}, ` +
-        `Merged unique after filters: ${mergedContacts.length} contacts for ${companyName}`,
+          `Merged unique after filters: ${mergedContacts.length} contacts for ${companyName}`,
       );
 
       if (mergedContacts.length > 0) {
         // Try to find LinkedIn profiles for contacts
         let linkedinUrls: string[] = [];
         try {
-          linkedinUrls = await this.firecrawl.search(`site:linkedin.com/in/ "${companyName}"`, '');
+          linkedinUrls = await this.firecrawl.search(
+            `site:linkedin.com/in/ "${companyName}"`,
+            '',
+          );
         } catch (searchErr: any) {
-          this.logger.warn(`LinkedIn search failed for ${companyName}: ${searchErr.message}`);
+          this.logger.warn(
+            `LinkedIn search failed for ${companyName}: ${searchErr.message}`,
+          );
         }
 
         for (const contact of mergedContacts) {
           let matchedLinkedinUrl: string | null = null;
           if (linkedinUrls.length > 0) {
-            matchedLinkedinUrl = linkedinUrls.find((url) => {
-              const cleanUrl = url.toLowerCase();
-              const nameParts = contact.name.toLowerCase().split(/\s+/);
-              return nameParts.every((part) => part.length > 2 && cleanUrl.includes(part));
-            }) || null;
+            matchedLinkedinUrl =
+              linkedinUrls.find((url) => {
+                const cleanUrl = url.toLowerCase();
+                const nameParts = contact.name.toLowerCase().split(/\s+/);
+                return nameParts.every(
+                  (part) => part.length > 2 && cleanUrl.includes(part),
+                );
+              }) || null;
           }
 
           await this.prisma.contact.create({
@@ -642,12 +744,17 @@ export class JobsService implements OnModuleInit {
           });
         }
 
-        this.logger.log(`Saved ${mergedContacts.length} unique contacts for Lead ${leadId}.`);
+        this.logger.log(
+          `Saved ${mergedContacts.length} unique contacts for Lead ${leadId}.`,
+        );
       }
 
       return mergedContacts.length;
     } catch (err: any) {
-      this.logger.error(`Failed to enrich lead ${leadId} with contacts: ${err.message}`, err.stack);
+      this.logger.error(
+        `Failed to enrich lead ${leadId} with contacts: ${err.message}`,
+        err.stack,
+      );
       return 0;
     }
   }

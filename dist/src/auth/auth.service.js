@@ -82,7 +82,9 @@ let AuthService = AuthService_1 = class AuthService {
     }
     hashPassword(password) {
         const salt = crypto.randomBytes(16).toString('hex');
-        const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+        const hash = crypto
+            .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
+            .toString('hex');
         return `${salt}:${hash}`;
     }
     verifyPassword(password, stored) {
@@ -90,7 +92,9 @@ let AuthService = AuthService_1 = class AuthService {
             const [salt, originalHash] = stored.split(':');
             if (!salt || !originalHash)
                 return false;
-            const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+            const hash = crypto
+                .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
+                .toString('hex');
             return hash === originalHash;
         }
         catch {
@@ -138,7 +142,9 @@ let AuthService = AuthService_1 = class AuthService {
     async sendOtpEmail(toEmail, code) {
         const resendApiKey = this.configService.get('RESEND_API_KEY') || '';
         const senderEmail = this.configService.get('SENDER_EMAIL') || 'onboarding@resend.dev';
-        const isMock = !resendApiKey || resendApiKey.startsWith('YOUR_') || resendApiKey.trim() === '';
+        const isMock = !resendApiKey ||
+            resendApiKey.startsWith('YOUR_') ||
+            resendApiKey.trim() === '';
         const html = `
       <div style="font-family:'Segoe UI',system-ui,sans-serif;max-width:480px;margin:0 auto;background:#0d0f1f;border-radius:16px;overflow:hidden;border:1px solid rgba(99,102,241,0.3)">
         <div style="background:linear-gradient(135deg,#6366f1,#7c3aed);padding:2rem;text-align:center">
@@ -162,7 +168,58 @@ let AuthService = AuthService_1 = class AuthService {
             this.logger.log(`[MOCK OTP EMAIL] To: ${toEmail} | Code: ${code}`);
             return;
         }
-        await axios_1.default.post('https://api.resend.com/emails', { from: senderEmail, to: [toEmail], subject: `${code} is your LeadSphere AI verification code`, html }, { headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' } });
+        await axios_1.default.post('https://api.resend.com/emails', {
+            from: senderEmail,
+            to: [toEmail],
+            subject: `${code} is your LeadSphere AI verification code`,
+            html,
+        }, {
+            headers: {
+                Authorization: `Bearer ${resendApiKey}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    }
+    getGoogleClientId() {
+        return this.configService.get('GOOGLE_CLIENT_ID') || null;
+    }
+    async googleLogin(credential) {
+        const clientId = this.getGoogleClientId();
+        if (!clientId) {
+            throw new common_1.BadRequestException('Google Client ID is not configured on the server');
+        }
+        let payload;
+        try {
+            const response = await axios_1.default.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+            payload = response.data;
+        }
+        catch (err) {
+            throw new common_1.UnauthorizedException('Invalid Google token');
+        }
+        if (payload.aud !== clientId) {
+            throw new common_1.UnauthorizedException('Token audience mismatch');
+        }
+        const email = payload.email?.toLowerCase().trim();
+        if (!email) {
+            throw new common_1.BadRequestException('Google token does not contain email');
+        }
+        let user = await this.prisma.user.findUnique({
+            where: { email },
+        });
+        if (!user) {
+            const username = payload.name || email.split('@')[0];
+            const secureRandomPassword = crypto.randomBytes(32).toString('hex');
+            const hashed = this.hashPassword(secureRandomPassword);
+            user = await this.prisma.user.create({
+                data: {
+                    email,
+                    username,
+                    password: hashed,
+                },
+            });
+        }
+        const token = this.createToken(user.id, user.email);
+        return { token, email: user.email };
     }
 };
 exports.AuthService = AuthService;

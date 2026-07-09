@@ -19,10 +19,21 @@ const config_1 = require("@nestjs/config");
 const axios_1 = __importDefault(require("axios"));
 const prisma_service_1 = require("../prisma/prisma.service");
 const DECISION_MAKER_TITLES = [
-    'CTO', 'Chief Technology Officer', 'VP of Engineering', 'VP Engineering',
-    'Director of Engineering', 'Head of Engineering', 'Tech Lead', 'Technical Lead',
-    'Chief Architect', 'VP of Technology', 'Head of Technology',
-    'VP of IT', 'Head of IT', 'IT Manager', 'Engineering Manager'
+    'CTO',
+    'Chief Technology Officer',
+    'VP of Engineering',
+    'VP Engineering',
+    'Director of Engineering',
+    'Head of Engineering',
+    'Tech Lead',
+    'Technical Lead',
+    'Chief Architect',
+    'VP of Technology',
+    'Head of Technology',
+    'VP of IT',
+    'Head of IT',
+    'IT Manager',
+    'Engineering Manager',
 ];
 let ApolloService = ApolloService_1 = class ApolloService {
     configService;
@@ -34,7 +45,10 @@ let ApolloService = ApolloService_1 = class ApolloService {
         this.configService = configService;
         this.prisma = prisma;
         this.apiKey = this.configService.get('APOLLO_API_KEY') || '';
-        this.isMockMode = !this.apiKey || this.apiKey.trim() === '' || this.apiKey.startsWith('YOUR_');
+        this.isMockMode =
+            !this.apiKey ||
+                this.apiKey.trim() === '' ||
+                this.apiKey.startsWith('YOUR_');
         if (this.isMockMode) {
             this.logger.warn('Apollo.io API key not set. Operating in Mock Mode.');
         }
@@ -52,7 +66,7 @@ let ApolloService = ApolloService_1 = class ApolloService {
         if (customKeywords && customKeywords.trim()) {
             const parsedTitles = customKeywords
                 .split(',')
-                .map(t => t.trim())
+                .map((t) => t.trim())
                 .filter(Boolean);
             if (parsedTitles.length > 0) {
                 targetTitles = parsedTitles;
@@ -67,7 +81,7 @@ let ApolloService = ApolloService_1 = class ApolloService {
                 if (settings && settings.crawlKeywords) {
                     const parsedTitles = settings.crawlKeywords
                         .split(',')
-                        .map(t => t.trim())
+                        .map((t) => t.trim())
                         .filter(Boolean);
                     if (parsedTitles.length > 0) {
                         targetTitles = parsedTitles;
@@ -114,7 +128,8 @@ let ApolloService = ApolloService_1 = class ApolloService {
         catch (error) {
             const apiError = error.response?.data || error.message;
             const errorStr = JSON.stringify(apiError);
-            if (errorStr.includes('API_INACCESSIBLE') || errorStr.includes('free plan')) {
+            if (errorStr.includes('API_INACCESSIBLE') ||
+                errorStr.includes('free plan')) {
                 this.logger.warn(`Apollo.io search is disabled: Your Apollo API key is on the Free Plan and does not support People Search API requests. Please upgrade your plan at https://app.apollo.io/ to enable this enrichment.`);
             }
             else {
@@ -132,7 +147,10 @@ let ApolloService = ApolloService_1 = class ApolloService {
             return parsed.hostname.replace('www.', '');
         }
         catch (e) {
-            return urlStr.replace(/https?:\/\//i, '').replace('www.', '').split('/')[0];
+            return urlStr
+                .replace(/https?:\/\//i, '')
+                .replace('www.', '')
+                .split('/')[0];
         }
     }
     sleep(ms) {

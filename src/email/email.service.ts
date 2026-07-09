@@ -31,24 +31,49 @@ export class EmailService {
     private configService: ConfigService,
   ) {
     this.openaiApiKey = this.configService.get<string>('OPENAI_API_KEY') || '';
-    this.anthropicApiKey = this.configService.get<string>('ANTHROPIC_API_KEY') || '';
+    this.anthropicApiKey =
+      this.configService.get<string>('ANTHROPIC_API_KEY') || '';
     this.geminiApiKey = this.configService.get<string>('GEMINI_API_KEY') || '';
     this.resendApiKey = this.configService.get<string>('RESEND_API_KEY') || '';
-    this.senderEmail = this.configService.get<string>('SENDER_EMAIL') || 'onboarding@resend.dev';
-    this.meetingBookingLink = this.configService.get<string>('MEETING_BOOKING_LINK') || 'https://calendar.app.google/Zg1o5bgrSsUdPgtS8';
+    this.senderEmail =
+      this.configService.get<string>('SENDER_EMAIL') || 'onboarding@resend.dev';
+    this.meetingBookingLink =
+      this.configService.get<string>('MEETING_BOOKING_LINK') ||
+      'https://calendar.app.google/Zg1o5bgrSsUdPgtS8';
 
-    this.useGemini = this.geminiApiKey.trim() !== '' && !this.geminiApiKey.startsWith('YOUR_');
-    this.isMockOpenai = !this.openaiApiKey || this.openaiApiKey.trim() === '' || this.openaiApiKey.startsWith('YOUR_');
-    this.isMockAnthropic = !this.anthropicApiKey || this.anthropicApiKey.trim() === '' || this.anthropicApiKey.startsWith('YOUR_');
-    this.isMockResend = !this.resendApiKey || this.resendApiKey.trim() === '' || this.resendApiKey.startsWith('YOUR_');
+    this.useGemini =
+      this.geminiApiKey.trim() !== '' && !this.geminiApiKey.startsWith('YOUR_');
+    this.isMockOpenai =
+      !this.openaiApiKey ||
+      this.openaiApiKey.trim() === '' ||
+      this.openaiApiKey.startsWith('YOUR_');
+    this.isMockAnthropic =
+      !this.anthropicApiKey ||
+      this.anthropicApiKey.trim() === '' ||
+      this.anthropicApiKey.startsWith('YOUR_');
+    this.isMockResend =
+      !this.resendApiKey ||
+      this.resendApiKey.trim() === '' ||
+      this.resendApiKey.startsWith('YOUR_');
 
     if (this.useGemini) {
-      this.logger.log('Gemini API key provided. Using Gemini for copywriting and compliance checks (Free Tier).');
+      this.logger.log(
+        'Gemini API key provided. Using Gemini for copywriting and compliance checks (Free Tier).',
+      );
     } else {
-      if (this.isMockOpenai) this.logger.warn('OpenAI API key missing/mock. Using Sales Lead AI Mock Mode.');
-      if (this.isMockAnthropic) this.logger.warn('Anthropic API key missing/mock. Using Compliance Check Mock Mode.');
+      if (this.isMockOpenai)
+        this.logger.warn(
+          'OpenAI API key missing/mock. Using Sales Lead AI Mock Mode.',
+        );
+      if (this.isMockAnthropic)
+        this.logger.warn(
+          'Anthropic API key missing/mock. Using Compliance Check Mock Mode.',
+        );
     }
-    if (this.isMockResend) this.logger.warn('Resend API key missing/mock. Using Email Delivery Sandbox/Mock Mode.');
+    if (this.isMockResend)
+      this.logger.warn(
+        'Resend API key missing/mock. Using Email Delivery Sandbox/Mock Mode.',
+      );
   }
 
   /**
@@ -68,26 +93,38 @@ export class EmailService {
     // 1. Check daily cap up front
     const stats = await this.getDailyStats();
     if (stats.sentToday >= stats.dailyCap) {
-      this.logger.warn(`Daily email cap of ${stats.dailyCap} reached. Skipping lead: ${lead.companyName}`);
+      this.logger.warn(
+        `Daily email cap of ${stats.dailyCap} reached. Skipping lead: ${lead.companyName}`,
+      );
       await this.prisma.lead.update({
         where: { id: leadId },
-        data: { emailStatus: 'SKIPPED_CAP', complianceReason: `Mailing Cap Breached (Limit: ${stats.dailyCap}).` },
+        data: {
+          emailStatus: 'SKIPPED_CAP',
+          complianceReason: `Mailing Cap Breached (Limit: ${stats.dailyCap}).`,
+        },
       });
       return;
     }
 
     // 2. Decide recipients — contacts first, fall back to company email
-    const contactsWithEmail = (lead.contacts || []).filter((c) => c.email && c.email.trim() !== '');
+    const contactsWithEmail = (lead.contacts || []).filter(
+      (c) => c.email && c.email.trim() !== '',
+    );
     const hasContacts = contactsWithEmail.length > 0;
     const hasCompanyEmail = lead.email && lead.email.trim() !== '';
 
     if (!hasContacts && !hasCompanyEmail) {
-      this.logger.log(`Lead ${lead.companyName} has no email address or contacts. Skipping.`);
+      this.logger.log(
+        `Lead ${lead.companyName} has no email address or contacts. Skipping.`,
+      );
       return;
     }
 
     // 3. Mark as GENERATING
-    await this.prisma.lead.update({ where: { id: leadId }, data: { emailStatus: 'GENERATING' } });
+    await this.prisma.lead.update({
+      where: { id: leadId },
+      data: { emailStatus: 'GENERATING' },
+    });
 
     let atLeastOneSent = false;
     let lastSubject = '';
@@ -96,19 +133,25 @@ export class EmailService {
     try {
       if (hasContacts) {
         // ── CONTACT-FIRST PATH ──
-        this.logger.log(`Lead ${lead.companyName}: sending to ${contactsWithEmail.length} targeted contact(s).`);
+        this.logger.log(
+          `Lead ${lead.companyName}: sending to ${contactsWithEmail.length} targeted contact(s).`,
+        );
 
         for (const contact of contactsWithEmail) {
           const currentStats = await this.getDailyStats();
           if (currentStats.sentToday >= currentStats.dailyCap) {
-            this.logger.warn(`Daily cap hit mid-loop. Stopping further sends for ${lead.companyName}.`);
+            this.logger.warn(
+              `Daily cap hit mid-loop. Stopping further sends for ${lead.companyName}.`,
+            );
             break;
           }
 
           // Check suppression per contact
           const suppressed = await this.checkSuppression(contact.email!);
           if (suppressed) {
-            this.logger.warn(`Contact ${contact.email} is suppressed. Skipping.`);
+            this.logger.warn(
+              `Contact ${contact.email} is suppressed. Skipping.`,
+            );
             await this.prisma.contact.update({
               where: { id: contact.id },
               data: { emailStatus: 'SKIPPED_SUPPRESSED' },
@@ -122,9 +165,15 @@ export class EmailService {
           lastBody = draft.body;
 
           // Compliance check
-          const compliance = await this.verifyCompliance(lead, draft.subject, draft.body);
+          const compliance = await this.verifyCompliance(
+            lead,
+            draft.subject,
+            draft.body,
+          );
           if (!compliance.isCompliant) {
-            this.logger.error(`Compliance REJECTED for contact ${contact.email}: ${compliance.failureReason}`);
+            this.logger.error(
+              `Compliance REJECTED for contact ${contact.email}: ${compliance.failureReason}`,
+            );
             await this.prisma.contact.update({
               where: { id: contact.id },
               data: { emailStatus: 'FAILED' },
@@ -143,7 +192,9 @@ export class EmailService {
           });
 
           // Send
-          this.logger.log(`Sending to decision-maker ${contact.name} <${contact.email}> (${contact.role})...`);
+          this.logger.log(
+            `Sending to decision-maker ${contact.name} <${contact.email}> (${contact.role})...`,
+          );
           await this.sendEmail(contact.email!, draft.subject, draft.body);
 
           // Update contact record
@@ -153,17 +204,24 @@ export class EmailService {
           });
 
           atLeastOneSent = true;
-          this.logger.log(`✓ Email sent to ${contact.name} at ${lead.companyName}`);
+          this.logger.log(
+            `✓ Email sent to ${contact.name} at ${lead.companyName}`,
+          );
         }
       } else {
         // ── FALLBACK: company email ──
-        this.logger.log(`Lead ${lead.companyName}: no contacts found, falling back to company email ${lead.email}.`);
+        this.logger.log(
+          `Lead ${lead.companyName}: no contacts found, falling back to company email ${lead.email}.`,
+        );
 
         const suppressed = await this.checkSuppression(lead.email!);
         if (suppressed) {
           await this.prisma.lead.update({
             where: { id: leadId },
-            data: { emailStatus: 'SKIPPED_SUPPRESSED', complianceReason: 'Email or Domain is in Suppression List.' },
+            data: {
+              emailStatus: 'SKIPPED_SUPPRESSED',
+              complianceReason: 'Email or Domain is in Suppression List.',
+            },
           });
           return;
         }
@@ -172,7 +230,11 @@ export class EmailService {
         lastSubject = draft.subject;
         lastBody = draft.body;
 
-        const compliance = await this.verifyCompliance(lead, draft.subject, draft.body);
+        const compliance = await this.verifyCompliance(
+          lead,
+          draft.subject,
+          draft.body,
+        );
         if (!compliance.isCompliant) {
           await this.prisma.lead.update({
             where: { id: leadId },
@@ -206,18 +268,27 @@ export class EmailService {
           emailStatus: atLeastOneSent ? 'SENT' : 'FAILED',
           emailSubject: lastSubject,
           emailBody: lastBody,
-          complianceReason: atLeastOneSent ? 'Outreach delivered to decision-maker(s).' : 'All contacts failed compliance or suppression checks.',
+          complianceReason: atLeastOneSent
+            ? 'Outreach delivered to decision-maker(s).'
+            : 'All contacts failed compliance or suppression checks.',
           sentAt: atLeastOneSent ? new Date() : undefined,
         },
       });
 
-      this.logger.log(`Pipeline complete for ${lead.companyName}. Sent: ${atLeastOneSent}`);
-
+      this.logger.log(
+        `Pipeline complete for ${lead.companyName}. Sent: ${atLeastOneSent}`,
+      );
     } catch (err: any) {
-      this.logger.error(`Pipeline failed for lead ${lead.id}: ${err.message}`, err.stack);
+      this.logger.error(
+        `Pipeline failed for lead ${lead.id}: ${err.message}`,
+        err.stack,
+      );
       await this.prisma.lead.update({
         where: { id: leadId },
-        data: { emailStatus: 'FAILED', complianceReason: `Error: ${err.message}` },
+        data: {
+          emailStatus: 'FAILED',
+          complianceReason: `Error: ${err.message}`,
+        },
       });
     }
   }
@@ -286,13 +357,20 @@ export class EmailService {
    */
   async getDailyStats(userId?: string): Promise<EmailStats> {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
 
     // Scope lead count to user's jobs when userId is provided
     let jobIds: string[] | undefined;
     if (userId) {
-      const userJobs = await this.prisma.job.findMany({ where: { userId }, select: { id: true } });
-      jobIds = userJobs.map(j => j.id);
+      const userJobs = await this.prisma.job.findMany({
+        where: { userId },
+        select: { id: true },
+      });
+      jobIds = userJobs.map((j) => j.id);
     }
 
     const sentCount = await this.prisma.lead.count({
@@ -320,14 +398,20 @@ export class EmailService {
     contact: { name?: string | null; role?: string | null } | null = null,
   ): Promise<{ subject: string; body: string }> {
     const firstName = contact?.name?.split(' ')[0] || null;
-    const greeting = firstName ? `Hi ${firstName},` : `Hello ${lead.companyName || 'Team'},`;
-    const roleContext = contact?.role ? `, as ${contact.role} at ${lead.companyName || 'your company'},` : '';
+    const greeting = firstName
+      ? `Hi ${firstName},`
+      : `Hello ${lead.companyName || 'Team'},`;
+    const roleContext = contact?.role
+      ? `, as ${contact.role} at ${lead.companyName || 'your company'},`
+      : '';
 
     const settings = await this.getSettings();
     const corpName = settings.corporateName || 'AIOS Inc.';
     const corpEmail = settings.email || 'onboarding@resend.dev';
     const corpPhone = settings.phoneNumber || '';
-    const customTemplate = settings.emailTemplate || 'Exclusive Offer: Free Automation Services for {{company}}';
+    const customTemplate =
+      settings.emailTemplate ||
+      'Exclusive Offer: Free Automation Services for {{company}}';
 
     if (this.useGemini) {
       try {
@@ -341,8 +425,12 @@ Lead Details:
 - Industry/Query: ${lead.job?.query || 'business'}
 - Location: ${lead.job?.location || 'local area'}
 - Description: ${lead.description || 'A boutique company'}
-${contact ? `- Recipient Name: ${contact.name || 'Unknown'}
-- Recipient Role: ${contact.role || 'Manager'}` : ''}
+${
+  contact
+    ? `- Recipient Name: ${contact.name || 'Unknown'}
+- Recipient Role: ${contact.role || 'Manager'}`
+    : ''
+}
 
 Instructions:
 1. Start the email with exactly this greeting: "${greeting}"
@@ -358,7 +446,8 @@ JSON Format:
 
         const resText = await this.callGemini(prompt, true);
         const parsed = JSON.parse(resText.trim());
-        if (!parsed.subject || !parsed.body) throw new Error('Gemini output is missing subject or body keys.');
+        if (!parsed.subject || !parsed.body)
+          throw new Error('Gemini output is missing subject or body keys.');
         return { subject: parsed.subject, body: parsed.body };
       } catch (err: any) {
         this.logger.error(`Gemini copywriting API failed: ${err.message}`);
@@ -395,8 +484,12 @@ Lead Details:
 - Industry/Query: ${lead.job?.query || 'business'}
 - Location: ${lead.job?.location || 'local area'}
 - Description: ${lead.description || 'A boutique company'}
-${contact ? `- Recipient Name: ${contact.name || 'Unknown'}
-- Recipient Role: ${contact.role || 'Manager'}` : ''}
+${
+  contact
+    ? `- Recipient Name: ${contact.name || 'Unknown'}
+- Recipient Role: ${contact.role || 'Manager'}`
+    : ''
+}
 
 Instructions:
 1. Start the email with exactly this greeting: "${greeting}"
@@ -420,12 +513,18 @@ JSON Format:
             { role: 'user', content: prompt },
           ],
         },
-        { headers: { Authorization: `Bearer ${this.openaiApiKey}`, 'Content-Type': 'application/json' } },
+        {
+          headers: {
+            Authorization: `Bearer ${this.openaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+        },
       );
 
       const resText = response.data.choices[0].message.content;
       const parsed = JSON.parse(resText);
-      if (!parsed.subject || !parsed.body) throw new Error('GPT-4o output is missing subject or body keys.');
+      if (!parsed.subject || !parsed.body)
+        throw new Error('GPT-4o output is missing subject or body keys.');
       return { subject: parsed.subject, body: parsed.body };
     } catch (err: any) {
       this.logger.error(`GPT-4o copywriting API failed: ${err.message}`);
@@ -440,7 +539,11 @@ JSON Format:
     lead: any,
     subject: string,
     body: string,
-  ): Promise<{ isCompliant: boolean; relevanceReason: string; failureReason: string | null }> {
+  ): Promise<{
+    isCompliant: boolean;
+    relevanceReason: string;
+    failureReason: string | null;
+  }> {
     const settings = await this.getSettings();
     const corpName = settings.corporateName || 'AIOS Inc.';
 
@@ -479,7 +582,10 @@ JSON Format:
 
     if (this.isMockAnthropic) {
       await this.sleep(1200);
-      const containsAddress = body.includes(corpName) || body.includes('123 Tech Lane') || body.includes('London, UK');
+      const containsAddress =
+        body.includes(corpName) ||
+        body.includes('123 Tech Lane') ||
+        body.includes('London, UK');
       const containsUnsubscribe = body.includes('{{unsubscribe_link}}');
 
       if (!containsAddress) {
@@ -493,7 +599,8 @@ JSON Format:
         return {
           isCompliant: false,
           relevanceReason: '',
-          failureReason: 'Compliance Rejected: Missing {{unsubscribe_link}} unsubscribe placeholder.',
+          failureReason:
+            'Compliance Rejected: Missing {{unsubscribe_link}} unsubscribe placeholder.',
         };
       }
 
@@ -544,7 +651,9 @@ JSON Format:
         failureReason: parsed.failureReason || null,
       };
     } catch (err: any) {
-      this.logger.error(`Claude 3.5 Sonnet compliance API failed: ${err.message}`);
+      this.logger.error(
+        `Claude 3.5 Sonnet compliance API failed: ${err.message}`,
+      );
       throw new Error(`Claude compliance check failed: ${err.message}`);
     }
   }
@@ -559,11 +668,13 @@ JSON Format:
       url,
       {
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: jsonMode ? { responseMimeType: 'application/json' } : undefined,
+        generationConfig: jsonMode
+          ? { responseMimeType: 'application/json' }
+          : undefined,
       },
       {
         headers: { 'Content-Type': 'application/json' },
-      }
+      },
     );
 
     const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -576,10 +687,19 @@ JSON Format:
   /**
    * Resend API email sender
    */
-  private async sendEmail(to: string, subject: string, html: string): Promise<void> {
-    const appUrl = this.configService.get<string>('APP_URL') || 'https://aios-kkkl.onrender.com';
+  private async sendEmail(
+    to: string,
+    subject: string,
+    html: string,
+  ): Promise<void> {
+    const appUrl =
+      this.configService.get<string>('APP_URL') ||
+      'https://aios-kkkl.onrender.com';
     const unsubscribeUrl = `${appUrl}/api/email/unsubscribe?email=${encodeURIComponent(to)}`;
-    const compiledHtml = html.replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl);
+    const compiledHtml = html.replace(
+      /\{\{unsubscribe_link\}\}/g,
+      unsubscribeUrl,
+    );
 
     const settings = await this.getSettings();
     const fromEmail = settings.email || this.senderEmail;
@@ -618,7 +738,7 @@ JSON Format:
   }
 
   private sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   // --- NEW WORKFLOW METHODS FOR INBOUND EMAIL HANDLING & MEETINGS ---
@@ -633,14 +753,20 @@ JSON Format:
       if (!settings) {
         const createData: any = {
           corporateName: '',
-          email: this.configService.get<string>('SENDER_EMAIL') || 'onboarding@resend.dev',
+          email:
+            this.configService.get<string>('SENDER_EMAIL') ||
+            'onboarding@resend.dev',
           phoneNumber: '',
-          emailTemplate: 'Exclusive Offer: Free Automation Services for {{company}}',
+          emailTemplate:
+            'Exclusive Offer: Free Automation Services for {{company}}',
           leadsPerDay: 15,
           crawlLocation: '',
           crawlIndustry: 'Bakery, Cafe, Gym',
-          autoRespond: this.configService.get<string>('AUTO_RESPOND') !== 'false',
-          bookingLink: this.configService.get<string>('MEETING_BOOKING_LINK') || 'https://calendar.app.google/Zg1o5bgrSsUdPgtS8',
+          autoRespond:
+            this.configService.get<string>('AUTO_RESPOND') !== 'false',
+          bookingLink:
+            this.configService.get<string>('MEETING_BOOKING_LINK') ||
+            'https://calendar.app.google/Zg1o5bgrSsUdPgtS8',
         };
         if (userId) createData.userId = userId;
         settings = await this.prisma.settings.create({ data: createData });
@@ -651,9 +777,12 @@ JSON Format:
       return {
         id: 'default',
         corporateName: '',
-        email: this.configService.get<string>('SENDER_EMAIL') || 'onboarding@resend.dev',
+        email:
+          this.configService.get<string>('SENDER_EMAIL') ||
+          'onboarding@resend.dev',
         phoneNumber: '',
-        emailTemplate: 'Exclusive Offer: Free Automation Services for {{company}}',
+        emailTemplate:
+          'Exclusive Offer: Free Automation Services for {{company}}',
         leadsPerDay: 15,
         crawlLocation: '',
         crawlIndustry: 'Bakery, Cafe, Gym',
@@ -663,19 +792,22 @@ JSON Format:
     }
   }
 
-  async updateSettings(userId: string | undefined, data: {
-    corporateName?: string;
-    email?: string;
-    phoneNumber?: string;
-    emailTemplate?: string;
-    leadsPerDay?: number;
-    crawlLocation?: string;
-    crawlIndustry?: string;
-    autoRespond?: boolean;
-    bookingLink?: string;
-  }) {
+  async updateSettings(
+    userId: string | undefined,
+    data: {
+      corporateName?: string;
+      email?: string;
+      phoneNumber?: string;
+      emailTemplate?: string;
+      leadsPerDay?: number;
+      crawlLocation?: string;
+      crawlIndustry?: string;
+      autoRespond?: boolean;
+      bookingLink?: string;
+    },
+  ) {
     try {
-      let settings = userId
+      const settings = userId
         ? await this.prisma.settings.findFirst({ where: { userId } })
         : await this.prisma.settings.findFirst();
 
@@ -684,12 +816,15 @@ JSON Format:
           corporateName: data.corporateName ?? '',
           email: data.email ?? 'onboarding@resend.dev',
           phoneNumber: data.phoneNumber ?? '',
-          emailTemplate: data.emailTemplate ?? 'Exclusive Offer: Free Automation Services for {{company}}',
+          emailTemplate:
+            data.emailTemplate ??
+            'Exclusive Offer: Free Automation Services for {{company}}',
           leadsPerDay: data.leadsPerDay ?? 15,
           crawlLocation: data.crawlLocation ?? '',
           crawlIndustry: data.crawlIndustry ?? 'Bakery, Cafe, Gym',
           autoRespond: data.autoRespond ?? true,
-          bookingLink: data.bookingLink ?? 'https://calendar.app.google/Zg1o5bgrSsUdPgtS8',
+          bookingLink:
+            data.bookingLink ?? 'https://calendar.app.google/Zg1o5bgrSsUdPgtS8',
         };
         if (userId) createData.userId = userId;
         return await this.prisma.settings.create({ data: createData });
@@ -702,7 +837,10 @@ JSON Format:
           email: data.email ?? settings.email,
           phoneNumber: data.phoneNumber ?? settings.phoneNumber,
           emailTemplate: data.emailTemplate ?? settings.emailTemplate,
-          leadsPerDay: data.leadsPerDay !== undefined ? Number(data.leadsPerDay) : settings.leadsPerDay,
+          leadsPerDay:
+            data.leadsPerDay !== undefined
+              ? Number(data.leadsPerDay)
+              : settings.leadsPerDay,
           crawlLocation: data.crawlLocation ?? settings.crawlLocation,
           crawlIndustry: data.crawlIndustry ?? settings.crawlIndustry,
           autoRespond: data.autoRespond ?? settings.autoRespond,
@@ -718,19 +856,25 @@ JSON Format:
   async getReceivedReplies(userId?: string) {
     let jobIds: string[] | undefined;
     if (userId) {
-      const userJobs = await this.prisma.job.findMany({ where: { userId }, select: { id: true } });
-      jobIds = userJobs.map(j => j.id);
+      const userJobs = await this.prisma.job.findMany({
+        where: { userId },
+        select: { id: true },
+      });
+      jobIds = userJobs.map((j) => j.id);
     }
     return this.prisma.receivedEmail.findMany({
-      where: jobIds !== undefined
-        ? { lead: { jobId: { in: jobIds } } }
-        : undefined,
+      where:
+        jobIds !== undefined ? { lead: { jobId: { in: jobIds } } } : undefined,
       include: { lead: true },
       orderBy: { receivedAt: 'desc' },
     });
   }
 
-  async updateDraftReply(receivedEmailId: string, subject: string, body: string) {
+  async updateDraftReply(
+    receivedEmailId: string,
+    subject: string,
+    body: string,
+  ) {
     return this.prisma.receivedEmail.update({
       where: { id: receivedEmailId },
       data: {
@@ -751,18 +895,28 @@ JSON Format:
     }
 
     if (!reply.draftedReplySubject || !reply.draftedReplyBody) {
-      throw new Error(`Draft is not completed yet for reply ${receivedEmailId}.`);
+      throw new Error(
+        `Draft is not completed yet for reply ${receivedEmailId}.`,
+      );
     }
 
     const recipientEmail = this.extractEmail(reply.from) || reply.lead.email;
     if (!recipientEmail) {
-      throw new Error(`No valid recipient email address available for reply ${receivedEmailId}.`);
+      throw new Error(
+        `No valid recipient email address available for reply ${receivedEmailId}.`,
+      );
     }
 
-    this.logger.log(`Sending follow-up reply to ${recipientEmail} via Resend...`);
+    this.logger.log(
+      `Sending follow-up reply to ${recipientEmail} via Resend...`,
+    );
 
     // Send the email using existing helper
-    await this.sendEmail(recipientEmail, reply.draftedReplySubject, reply.draftedReplyBody);
+    await this.sendEmail(
+      recipientEmail,
+      reply.draftedReplySubject,
+      reply.draftedReplyBody,
+    );
 
     // Update reply status in database
     await this.prisma.receivedEmail.update({
@@ -782,13 +936,18 @@ JSON Format:
       return;
     }
 
-    const id = payload.data.id || payload.data.email_id || `email-${Date.now()}`;
+    const id =
+      payload.data.id || payload.data.email_id || `email-${Date.now()}`;
     const { from, subject, created_at, text, html } = payload.data;
-    this.logger.log(`Received email metadata: ID=${id}, From=${from}, Subject=${subject}`);
+    this.logger.log(
+      `Received email metadata: ID=${id}, From=${from}, Subject=${subject}`,
+    );
 
     const cleanEmail = this.extractEmail(from);
     if (!cleanEmail) {
-      this.logger.error(`Could not extract clean email address from sender: ${from}`);
+      this.logger.error(
+        `Could not extract clean email address from sender: ${from}`,
+      );
       return;
     }
 
@@ -819,7 +978,9 @@ JSON Format:
     }
 
     if (!lead) {
-      this.logger.warn(`No lead matches the incoming sender email: ${cleanEmail}. Skipping received email record.`);
+      this.logger.warn(
+        `No lead matches the incoming sender email: ${cleanEmail}. Skipping received email record.`,
+      );
       return;
     }
 
@@ -836,25 +997,35 @@ JSON Format:
 
     if (!bodyText && !bodyHtml) {
       if (id.startsWith('mock-email-')) {
-        bodyText = this.mockReplyBodies.get(id) || 'Hey! That sounds cool. Let\'s chat.';
+        bodyText =
+          this.mockReplyBodies.get(id) || "Hey! That sounds cool. Let's chat.";
         bodyHtml = `<p>${bodyText}</p>`;
         this.mockReplyBodies.delete(id); // clean up from memory cache
       } else if (this.isMockResend) {
-        this.logger.log(`Running in Resend mock mode. Simulating reply body fetching...`);
+        this.logger.log(
+          `Running in Resend mock mode. Simulating reply body fetching...`,
+        );
         bodyText = `Hi, thank you for the outreach. Your automation service sounds interesting! Can we schedule a quick call to discuss how it works? Let know if this Thursday works for you. Best, ${lead.companyName || 'Manager'}`;
         bodyHtml = `<p>Hi, thank you for the outreach.</p><p>Your automation service sounds interesting! Can we schedule a quick call to discuss how it works? Let know if this Thursday works for you.</p><p>Best,<br/>${lead.companyName || 'Manager'}</p>`;
       } else {
         try {
-          const response = await axios.get(`https://api.resend.com/emails/receiving/${id}`, {
-            headers: {
-              Authorization: `Bearer ${this.resendApiKey}`,
+          const response = await axios.get(
+            `https://api.resend.com/emails/receiving/${id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${this.resendApiKey}`,
+              },
             },
-          });
+          );
           bodyText = response.data.text || '';
           bodyHtml = response.data.html || '';
         } catch (err: any) {
-          const apiErr = err.response?.data ? JSON.stringify(err.response.data) : err.message;
-          this.logger.error(`Failed to fetch email details from Resend API for ID ${id}: ${apiErr}`);
+          const apiErr = err.response?.data
+            ? JSON.stringify(err.response.data)
+            : err.message;
+          this.logger.error(
+            `Failed to fetch email details from Resend API for ID ${id}: ${apiErr}`,
+          );
           bodyText = `Reply received regarding: ${subject} (Error: ${apiErr})`;
           bodyHtml = `<p>${bodyText}</p>`;
         }
@@ -874,26 +1045,36 @@ JSON Format:
       },
     });
 
-    this.logger.log(`Inbound email reply recorded in database for Lead: ${lead.companyName}`);
+    this.logger.log(
+      `Inbound email reply recorded in database for Lead: ${lead.companyName}`,
+    );
 
     // Trigger AI follow-up draft generation
     try {
       await this.generateFollowUpDraft(lead, receivedEmail);
-      
+
       const settings = await this.getSettings();
       if (settings.autoRespond) {
-        this.logger.log(`Auto-respond is ENABLED. Automatically sending AI follow-up reply...`);
+        this.logger.log(
+          `Auto-respond is ENABLED. Automatically sending AI follow-up reply...`,
+        );
         await this.sendFollowUpReply(receivedEmail.id);
       } else {
-        this.logger.log(`Auto-respond is DISABLED. Draft saved for manual review.`);
+        this.logger.log(
+          `Auto-respond is DISABLED. Draft saved for manual review.`,
+        );
       }
     } catch (draftErr: any) {
-      this.logger.error(`Failed to automatically generate or send follow-up draft: ${draftErr.message}`);
+      this.logger.error(
+        `Failed to automatically generate or send follow-up draft: ${draftErr.message}`,
+      );
     }
   }
 
   async generateFollowUpDraft(lead: any, receivedEmail: any) {
-    this.logger.log(`Generating AI follow-up draft for ReceivedEmail: ${receivedEmail.id}`);
+    this.logger.log(
+      `Generating AI follow-up draft for ReceivedEmail: ${receivedEmail.id}`,
+    );
 
     const settings = await this.getSettings();
     const bookingLink = settings.bookingLink;
@@ -937,7 +1118,9 @@ JSON Format:
         subject = parsed.subject || `Re: ${receivedSubject}`;
         body = parsed.body || '';
       } catch (err: any) {
-        this.logger.error(`Gemini copywriter failed for follow-up: ${err.message}`);
+        this.logger.error(
+          `Gemini copywriter failed for follow-up: ${err.message}`,
+        );
       }
     }
 
@@ -958,7 +1141,10 @@ JSON Format:
               model: 'gpt-4o',
               response_format: { type: 'json_object' },
               messages: [
-                { role: 'system', content: 'You output only valid JSON response.' },
+                {
+                  role: 'system',
+                  content: 'You output only valid JSON response.',
+                },
                 { role: 'user', content: prompt },
               ],
             },
@@ -975,7 +1161,9 @@ JSON Format:
           subject = parsed.subject || `Re: ${receivedSubject}`;
           body = parsed.body || '';
         } catch (err: any) {
-          this.logger.error(`GPT-4o copywriter failed for follow-up: ${err.message}`);
+          this.logger.error(
+            `GPT-4o copywriter failed for follow-up: ${err.message}`,
+          );
           throw err;
         }
       }
@@ -990,7 +1178,6 @@ JSON Format:
       },
     });
   }
-
 
   private extractEmail(fromStr: string): string | null {
     if (!fromStr) return null;

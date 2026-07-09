@@ -25,7 +25,10 @@ let HunterService = HunterService_1 = class HunterService {
     constructor(configService) {
         this.configService = configService;
         this.apiKey = this.configService.get('HUNTER_API_KEY') || '';
-        this.isMockMode = !this.apiKey || this.apiKey.trim() === '' || this.apiKey.startsWith('YOUR_');
+        this.isMockMode =
+            !this.apiKey ||
+                this.apiKey.trim() === '' ||
+                this.apiKey.startsWith('YOUR_');
         if (this.isMockMode) {
             this.logger.warn('Hunter.io API key not set or invalid. Operating in Sandbox/Mock Mode.');
         }
@@ -52,7 +55,9 @@ let HunterService = HunterService_1 = class HunterService {
                     limit: 10,
                 },
             });
-            if (response.data && response.data.data && Array.isArray(response.data.data.emails)) {
+            if (response.data &&
+                response.data.data &&
+                Array.isArray(response.data.data.emails)) {
                 const emails = response.data.data.emails;
                 const contacts = emails
                     .filter((e) => e.first_name || e.last_name)
@@ -82,7 +87,10 @@ let HunterService = HunterService_1 = class HunterService {
             return parsed.hostname.replace('www.', '');
         }
         catch (e) {
-            return urlStr.replace(/https?:\/\//i, '').replace('www.', '').split('/')[0];
+            return urlStr
+                .replace(/https?:\/\//i, '')
+                .replace('www.', '')
+                .split('/')[0];
         }
     }
     sleep(ms) {
@@ -90,8 +98,18 @@ let HunterService = HunterService_1 = class HunterService {
     }
     generateMockContacts(domain) {
         return [
-            { name: 'Dr. James Smith', role: 'Clinical Director & Chief Dentist', email: `jahzealibeh16@gmail.com`, phone: '+44 20 7946 0199' },
-            { name: 'Dr. Sarah Jenkins', role: 'Practice Manager', email: `aukwu@senoraconstruction.com`, phone: '+44 20 7946 0233' },
+            {
+                name: 'Dr. James Smith',
+                role: 'Clinical Director & Chief Dentist',
+                email: `jahzealibeh16@gmail.com`,
+                phone: '+44 20 7946 0199',
+            },
+            {
+                name: 'Dr. Sarah Jenkins',
+                role: 'Practice Manager',
+                email: `aukwu@senoraconstruction.com`,
+                phone: '+44 20 7946 0233',
+            },
         ];
     }
 };

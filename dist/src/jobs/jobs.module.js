@@ -20,7 +20,13 @@ let JobsModule = class JobsModule {
 exports.JobsModule = JobsModule;
 exports.JobsModule = JobsModule = __decorate([
     (0, common_1.Module)({
-        imports: [firecrawl_module_1.FirecrawlModule, email_module_1.EmailModule, hunter_module_1.HunterModule, apollo_module_1.ApolloModule, auth_module_1.AuthModule],
+        imports: [
+            firecrawl_module_1.FirecrawlModule,
+            email_module_1.EmailModule,
+            hunter_module_1.HunterModule,
+            apollo_module_1.ApolloModule,
+            auth_module_1.AuthModule,
+        ],
         controllers: [jobs_controller_1.JobsController],
         providers: [jobs_service_1.JobsService],
         exports: [jobs_service_1.JobsService],

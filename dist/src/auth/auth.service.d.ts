@@ -20,4 +20,9 @@ export declare class AuthService implements OnModuleInit {
     storeOtp(email: string, code: string): void;
     verifyOtp(email: string, code: string): boolean;
     sendOtpEmail(toEmail: string, code: string): Promise<void>;
+    getGoogleClientId(): string | null;
+    googleLogin(credential: string): Promise<{
+        token: string;
+        email: string;
+    }>;
 }

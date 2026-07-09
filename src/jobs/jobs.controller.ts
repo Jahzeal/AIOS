@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Param, Query, Delete, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  Delete,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JobsService } from './jobs.service';
 import { AuthGuard } from '../auth/auth.guard';
 
@@ -8,8 +18,16 @@ export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Post('jobs/search')
-  async createSearchJob(@Req() req: any, @Body() body: { query: string; location: string; keywords?: string }) {
-    return this.jobsService.createSearchJob(req.user.userId, body.query, body.location, body.keywords);
+  async createSearchJob(
+    @Req() req: any,
+    @Body() body: { query: string; location: string; keywords?: string },
+  ) {
+    return this.jobsService.createSearchJob(
+      req.user.userId,
+      body.query,
+      body.location,
+      body.keywords,
+    );
   }
 
   @Post('jobs/urls')

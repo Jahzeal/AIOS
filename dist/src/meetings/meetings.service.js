@@ -69,10 +69,20 @@ let MeetingsService = MeetingsService_1 = class MeetingsService {
     }
     async findAllMeetings(userId) {
         return this.prisma.upcomingMeeting.findMany({
-            where: userId
-                ? { lead: { job: { userId } } }
-                : undefined,
-            include: { lead: true },
+            where: userId ? { lead: { job: { userId } } } : undefined,
+            include: {
+                lead: {
+                    include: {
+                        job: {
+                            include: {
+                                user: {
+                                    select: { username: true, email: true },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
             orderBy: { scheduledAt: 'asc' },
         });
     }

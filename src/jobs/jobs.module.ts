@@ -8,7 +8,13 @@ import { ApolloModule } from '../apollo/apollo.module';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [FirecrawlModule, EmailModule, HunterModule, ApolloModule, AuthModule],
+  imports: [
+    FirecrawlModule,
+    EmailModule,
+    HunterModule,
+    ApolloModule,
+    AuthModule,
+  ],
   controllers: [JobsController],
   providers: [JobsService],
   exports: [JobsService],

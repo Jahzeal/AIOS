@@ -105,7 +105,7 @@ let JobsService = JobsService_1 = class JobsService {
         const userJobIds = (await this.prisma.job.findMany({
             where: { userId },
             select: { id: true },
-        })).map(j => j.id);
+        })).map((j) => j.id);
         if (search) {
             return this.prisma.lead.findMany({
                 where: {
@@ -224,8 +224,12 @@ let JobsService = JobsService_1 = class JobsService {
             });
             for (const lead of pendingLeads) {
                 try {
-                    const currentJob = await this.prisma.job.findUnique({ where: { id: job.id } });
-                    if (!currentJob || currentJob.status === 'FAILED' || currentJob.status === 'COMPLETED') {
+                    const currentJob = await this.prisma.job.findUnique({
+                        where: { id: job.id },
+                    });
+                    if (!currentJob ||
+                        currentJob.status === 'FAILED' ||
+                        currentJob.status === 'COMPLETED') {
                         this.logger.log(`Job ${job.id} was stopped or failed. Aborting lead scraping loop.`);
                         break;
                     }
@@ -274,14 +278,19 @@ let JobsService = JobsService_1 = class JobsService {
                                 }
                             }
                             const settings = await this.emailService.getSettings();
-                            if (settings.autoRespond && updatedLead.email && updatedLead.email.trim() !== '') {
-                                this.emailService.processEmailPipeline(updatedLead.id).catch((err) => this.logger.error(`Failed executing email pipeline: ${err.message}`));
+                            if (settings.autoRespond &&
+                                updatedLead.email &&
+                                updatedLead.email.trim() !== '') {
+                                this.emailService
+                                    .processEmailPipeline(updatedLead.id)
+                                    .catch((err) => this.logger.error(`Failed executing email pipeline: ${err.message}`));
                             }
                         }
                         continue;
                     }
                     const scrapedData = await this.firecrawl.scrape(lead.website);
-                    if (job.query && !this.firecrawl.isRelevantToQuery(job.query, scrapedData.description || '', scrapedData.companyName)) {
+                    if (job.query &&
+                        !this.firecrawl.isRelevantToQuery(job.query, scrapedData.description || '', scrapedData.companyName)) {
                         this.logger.warn(`Job ${job.id}: Discarding irrelevant result "${scrapedData.companyName}" (not related to "${job.query}")`);
                         await this.prisma.lead.delete({ where: { id: lead.id } });
                         continue;
@@ -302,7 +311,8 @@ let JobsService = JobsService_1 = class JobsService {
                     });
                     const enrichedContacts = await this.enrichLeadWithContacts(lead.id, lead.website, scrapedData.companyName);
                     const settings = await this.emailService.getSettings();
-                    const hasContactsOrEmail = (enrichedContacts && enrichedContacts > 0) || (updatedLead.email && updatedLead.email.trim() !== '');
+                    const hasContactsOrEmail = (enrichedContacts && enrichedContacts > 0) ||
+                        (updatedLead.email && updatedLead.email.trim() !== '');
                     if (settings.autoRespond && hasContactsOrEmail) {
                         try {
                             await this.emailService.processEmailPipeline(updatedLead.id);
@@ -348,8 +358,12 @@ let JobsService = JobsService_1 = class JobsService {
             });
             for (const lead of pendingLeads) {
                 try {
-                    const currentJob = await this.prisma.job.findUnique({ where: { id: job.id } });
-                    if (!currentJob || currentJob.status === 'FAILED' || currentJob.status === 'COMPLETED') {
+                    const currentJob = await this.prisma.job.findUnique({
+                        where: { id: job.id },
+                    });
+                    if (!currentJob ||
+                        currentJob.status === 'FAILED' ||
+                        currentJob.status === 'COMPLETED') {
                         this.logger.log(`Job ${job.id} was stopped or failed. Aborting URL scraping loop.`);
                         break;
                     }
@@ -398,8 +412,12 @@ let JobsService = JobsService_1 = class JobsService {
                                 }
                             }
                             const settings = await this.emailService.getSettings();
-                            if (settings.autoRespond && updatedLead.email && updatedLead.email.trim() !== '') {
-                                this.emailService.processEmailPipeline(updatedLead.id).catch((err) => this.logger.error(`Failed executing email pipeline: ${err.message}`));
+                            if (settings.autoRespond &&
+                                updatedLead.email &&
+                                updatedLead.email.trim() !== '') {
+                                this.emailService
+                                    .processEmailPipeline(updatedLead.id)
+                                    .catch((err) => this.logger.error(`Failed executing email pipeline: ${err.message}`));
                             }
                         }
                         continue;
@@ -421,7 +439,8 @@ let JobsService = JobsService_1 = class JobsService {
                     });
                     const enrichedContacts2 = await this.enrichLeadWithContacts(lead.id, lead.website, scrapedData.companyName);
                     const settings = await this.emailService.getSettings();
-                    const hasContactsOrEmail2 = (enrichedContacts2 > 0) || (updatedLead.email && updatedLead.email.trim() !== '');
+                    const hasContactsOrEmail2 = enrichedContacts2 > 0 ||
+                        (updatedLead.email && updatedLead.email.trim() !== '');
                     if (settings.autoRespond && hasContactsOrEmail2) {
                         try {
                             await this.emailService.processEmailPipeline(updatedLead.id);
@@ -500,16 +519,21 @@ let JobsService = JobsService_1 = class JobsService {
                 catch { }
             }
             if (filterKeywords && filterKeywords.trim()) {
-                const titleKeywords = filterKeywords.split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
+                const titleKeywords = filterKeywords
+                    .split(',')
+                    .map((k) => k.trim().toLowerCase())
+                    .filter(Boolean);
                 if (titleKeywords.length > 0) {
                     const beforeFilterCount = mergedContacts.length;
-                    mergedContacts = mergedContacts.filter(c => {
+                    mergedContacts = mergedContacts.filter((c) => {
                         const roleLower = (c.role || '').toLowerCase();
-                        return titleKeywords.some(keyword => {
+                        return titleKeywords.some((keyword) => {
                             if (roleLower.includes(keyword))
                                 return true;
-                            const words = roleLower.split(/[\s\-\/]+/).filter(w => w && w !== 'of' && w !== 'and' && w !== 'the');
-                            const initials = words.map(w => w.charAt(0)).join('');
+                            const words = roleLower
+                                .split(/[\s\-\/]+/)
+                                .filter((w) => w && w !== 'of' && w !== 'and' && w !== 'the');
+                            const initials = words.map((w) => w.charAt(0)).join('');
                             if (initials === keyword || initials.includes(keyword))
                                 return true;
                             return false;
@@ -531,11 +555,12 @@ let JobsService = JobsService_1 = class JobsService {
                 for (const contact of mergedContacts) {
                     let matchedLinkedinUrl = null;
                     if (linkedinUrls.length > 0) {
-                        matchedLinkedinUrl = linkedinUrls.find((url) => {
-                            const cleanUrl = url.toLowerCase();
-                            const nameParts = contact.name.toLowerCase().split(/\s+/);
-                            return nameParts.every((part) => part.length > 2 && cleanUrl.includes(part));
-                        }) || null;
+                        matchedLinkedinUrl =
+                            linkedinUrls.find((url) => {
+                                const cleanUrl = url.toLowerCase();
+                                const nameParts = contact.name.toLowerCase().split(/\s+/);
+                                return nameParts.every((part) => part.length > 2 && cleanUrl.includes(part));
+                            }) || null;
                     }
                     await this.prisma.contact.create({
                         data: {

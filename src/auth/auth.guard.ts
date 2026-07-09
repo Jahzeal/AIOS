@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 @Injectable()
@@ -9,11 +14,12 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const url = request.url;
 
-    // Public endpoints: auth login, registration, unsubscribe page, and the email webhook handler
+    // Public endpoints: auth login, registration, google auth, unsubscribe page, and the email webhook handler
     if (
       url.includes('/api/auth/login') ||
       url.includes('/api/auth/register') ||
       url.includes('/api/auth/send-code') ||
+      url.includes('/api/auth/google') ||
       url.includes('/api/email/unsubscribe') ||
       url.includes('/api/email/webhook')
     ) {

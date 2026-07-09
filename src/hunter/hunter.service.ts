@@ -17,9 +17,14 @@ export class HunterService {
 
   constructor(private configService: ConfigService) {
     this.apiKey = this.configService.get<string>('HUNTER_API_KEY') || '';
-    this.isMockMode = !this.apiKey || this.apiKey.trim() === '' || this.apiKey.startsWith('YOUR_');
+    this.isMockMode =
+      !this.apiKey ||
+      this.apiKey.trim() === '' ||
+      this.apiKey.startsWith('YOUR_');
     if (this.isMockMode) {
-      this.logger.warn('Hunter.io API key not set or invalid. Operating in Sandbox/Mock Mode.');
+      this.logger.warn(
+        'Hunter.io API key not set or invalid. Operating in Sandbox/Mock Mode.',
+      );
     } else {
       this.logger.log('Hunter.io API key detected. Operating in Live Mode.');
     }
@@ -36,7 +41,9 @@ export class HunterService {
       return [];
     }
 
-    this.logger.log(`Searching decision-maker contacts for domain: ${cleanDomain}`);
+    this.logger.log(
+      `Searching decision-maker contacts for domain: ${cleanDomain}`,
+    );
 
     if (this.isMockMode) {
       await this.sleep(1000);
@@ -44,15 +51,22 @@ export class HunterService {
     }
 
     try {
-      const response = await axios.get('https://api.hunter.io/v2/domain-search', {
-        params: {
-          domain: cleanDomain,
-          api_key: this.apiKey,
-          limit: 10,
+      const response = await axios.get(
+        'https://api.hunter.io/v2/domain-search',
+        {
+          params: {
+            domain: cleanDomain,
+            api_key: this.apiKey,
+            limit: 10,
+          },
         },
-      });
+      );
 
-      if (response.data && response.data.data && Array.isArray(response.data.data.emails)) {
+      if (
+        response.data &&
+        response.data.data &&
+        Array.isArray(response.data.data.emails)
+      ) {
         const emails = response.data.data.emails;
         const contacts: HunterContact[] = emails
           .filter((e: any) => e.first_name || e.last_name) // only named contacts
@@ -63,14 +77,18 @@ export class HunterService {
             phone: e.phone_number || undefined,
           }));
 
-        this.logger.log(`Hunter.io found ${contacts.length} contacts for ${cleanDomain}`);
+        this.logger.log(
+          `Hunter.io found ${contacts.length} contacts for ${cleanDomain}`,
+        );
         return contacts;
       }
 
       return [];
     } catch (error: any) {
       const apiError = error.response?.data || error.message;
-      this.logger.error(`Hunter.io Domain Search failed for ${cleanDomain}: ${JSON.stringify(apiError)}`);
+      this.logger.error(
+        `Hunter.io Domain Search failed for ${cleanDomain}: ${JSON.stringify(apiError)}`,
+      );
       return [];
     }
   }
@@ -82,7 +100,10 @@ export class HunterService {
       const parsed = new URL(tempUrl);
       return parsed.hostname.replace('www.', '');
     } catch (e) {
-      return urlStr.replace(/https?:\/\//i, '').replace('www.', '').split('/')[0];
+      return urlStr
+        .replace(/https?:\/\//i, '')
+        .replace('www.', '')
+        .split('/')[0];
     }
   }
 
@@ -92,8 +113,18 @@ export class HunterService {
 
   private generateMockContacts(domain: string): HunterContact[] {
     return [
-      { name: 'Dr. James Smith',   role: 'Clinical Director & Chief Dentist', email: `jahzealibeh16@gmail.com`,   phone: '+44 20 7946 0199' },
-      { name: 'Dr. Sarah Jenkins', role: 'Practice Manager',                  email: `aukwu@senoraconstruction.com`, phone: '+44 20 7946 0233' },
+      {
+        name: 'Dr. James Smith',
+        role: 'Clinical Director & Chief Dentist',
+        email: `jahzealibeh16@gmail.com`,
+        phone: '+44 20 7946 0199',
+      },
+      {
+        name: 'Dr. Sarah Jenkins',
+        role: 'Practice Manager',
+        email: `aukwu@senoraconstruction.com`,
+        phone: '+44 20 7946 0233',
+      },
     ];
   }
 }

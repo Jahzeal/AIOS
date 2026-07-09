@@ -8,7 +8,8 @@ export class AppController {
   @Get('status')
   getStatus() {
     const apiKey = this.configService.get<string>('FIRECRAWL_API_KEY') || '';
-    const isMock = !apiKey || apiKey.trim() === '' || apiKey.startsWith('YOUR_');
+    const isMock =
+      !apiKey || apiKey.trim() === '' || apiKey.startsWith('YOUR_');
     return {
       isMockMode: isMock,
       status: 'healthy',

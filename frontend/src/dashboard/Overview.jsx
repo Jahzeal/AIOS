@@ -1,9 +1,61 @@
 import { Zap, Mail, BarChart3, Users, TrendingUp } from 'lucide-react';
 import { T, StatusBadge } from './shared.jsx';
 
-export default function Overview({ jobs, leads, emailStats }) {
+export default function Overview({ jobs, leads, emailStats, googleConnection, onNavigate }) {
   return (
     <>
+      {/* Google Calendar Connection Reminder Banner */}
+      {(!googleConnection || !googleConnection.connected) && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(217,70,239,0.06) 100%)',
+          border: '1px solid rgba(99,102,241,0.22)',
+          borderRadius: 16,
+          padding: '1.2rem 1.5rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '1.5rem',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(12px)',
+          animation: 'slideIn 0.3s ease-out',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 12,
+              background: 'linear-gradient(135deg, #6366f1, #d946ef)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18, boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
+            }}>
+              📅
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.3px' }}>
+                Connect Your Google Calendar
+              </h4>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'rgba(248,250,252,0.45)', lineHeight: 1.4 }}>
+                Synchronize bookings, track scheduled meetings automatically on your dashboard, and stop relying on Zapier.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('settings')}
+            style={{
+              padding: '0.55rem 1.1rem', borderRadius: 9, border: 'none',
+              background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
+              color: '#fff', fontSize: '0.8rem', fontWeight: 700,
+              cursor: 'pointer', transition: 'all 0.25s ease',
+              boxShadow: '0 4px 12px rgba(99,102,241,0.25)',
+              whiteSpace: 'nowrap',
+              fontFamily: 'inherit',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(99,102,241,0.4)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.25)'; }}
+          >
+            Connect Calendar
+          </button>
+        </div>
+      )}
       {/* Stat cards */}
       <div className="overview-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         {[

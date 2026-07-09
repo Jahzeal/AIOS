@@ -25,7 +25,10 @@ let FirecrawlService = FirecrawlService_1 = class FirecrawlService {
     constructor(configService) {
         this.configService = configService;
         this.apiKey = this.configService.get('FIRECRAWL_API_KEY') || '';
-        this.isMockMode = !this.apiKey || this.apiKey.trim() === '' || this.apiKey.startsWith('YOUR_');
+        this.isMockMode =
+            !this.apiKey ||
+                this.apiKey.trim() === '' ||
+                this.apiKey.startsWith('YOUR_');
         if (this.isMockMode) {
             this.logger.warn('Firecrawl API key not set. Operating in Sandbox/Mock Mode.');
         }
@@ -47,7 +50,9 @@ let FirecrawlService = FirecrawlService_1 = class FirecrawlService {
                     'Content-Type': 'application/json',
                 },
             });
-            if (response.data && response.data.success && Array.isArray(response.data.data)) {
+            if (response.data &&
+                response.data.success &&
+                Array.isArray(response.data.data)) {
                 const items = response.data.data;
                 const urls = this.filterAndNormalizeUrls(items, query, location);
                 this.logger.log(`Search returned ${items.length} raw results, filtered to ${urls.length} viable targets.`);
@@ -75,19 +80,37 @@ let FirecrawlService = FirecrawlService_1 = class FirecrawlService {
                     schema: {
                         type: 'object',
                         properties: {
-                            company_name: { type: 'string', description: 'Name of the business' },
+                            company_name: {
+                                type: 'string',
+                                description: 'Name of the business',
+                            },
                             email: { type: 'string', description: 'Contact email address' },
                             phone: { type: 'string', description: 'Contact phone number' },
                             facebook: { type: 'string', description: 'Facebook page URL' },
-                            instagram: { type: 'string', description: 'Instagram page URL' },
-                            linkedin: { type: 'string', description: 'LinkedIn company or personal page URL' },
-                            twitter: { type: 'string', description: 'Twitter/X profile URL' },
-                            address: { type: 'string', description: 'Physical address of the business' },
-                            description: { type: 'string', description: 'Brief description of the company and what they do' }
+                            instagram: {
+                                type: 'string',
+                                description: 'Instagram page URL',
+                            },
+                            linkedin: {
+                                type: 'string',
+                                description: 'LinkedIn company or personal page URL',
+                            },
+                            twitter: {
+                                type: 'string',
+                                description: 'Twitter/X profile URL',
+                            },
+                            address: {
+                                type: 'string',
+                                description: 'Physical address of the business',
+                            },
+                            description: {
+                                type: 'string',
+                                description: 'Brief description of the company and what they do',
+                            },
                         },
-                        required: ['company_name']
-                    }
-                }
+                        required: ['company_name'],
+                    },
+                },
             }, {
                 headers: {
                     Authorization: `Bearer ${this.apiKey}`,
@@ -106,13 +129,13 @@ let FirecrawlService = FirecrawlService_1 = class FirecrawlService {
                     linkedin: info.linkedin || null,
                     twitter: info.twitter || null,
                     address: info.address || null,
-                    description: info.description || null
+                    description: info.description || null,
                 };
             }
             return {
                 companyName: this.getDomainName(url),
                 website: url,
-                description: 'Scraped successfully, but no structured data returned.'
+                description: 'Scraped successfully, but no structured data returned.',
             };
         }
         catch (error) {
@@ -132,8 +155,8 @@ let FirecrawlService = FirecrawlService_1 = class FirecrawlService {
             const root = this.extractRootDomain(url);
             if (!root || this.isDirectoryOrSocial(root))
                 continue;
-            const hasQueryMatch = queryWords.some(w => w.length > 3 && snippet.includes(w));
-            const hasLocationMatch = locationWords.some(w => w.length > 2 && snippet.includes(w));
+            const hasQueryMatch = queryWords.some((w) => w.length > 3 && snippet.includes(w));
+            const hasLocationMatch = locationWords.some((w) => w.length > 2 && snippet.includes(w));
             if (!hasQueryMatch && !hasLocationMatch) {
                 this.logger.warn(`Skipping irrelevant result: ${root} (no keyword match in title/description)`);
                 continue;
@@ -153,26 +176,75 @@ let FirecrawlService = FirecrawlService_1 = class FirecrawlService {
     }
     isDirectoryOrSocial(domain) {
         const blacklist = [
-            'facebook.com', 'instagram.com', 'linkedin.com', 'twitter.com', 'x.com',
-            'youtube.com', 'pinterest.com', 'tiktok.com', 'snapchat.com',
-            'yelp.', 'tripadvisor.', 'yellowpages.', 'foursquare.', 'mapquest.',
-            'yell.com', 'thomsonlocal.', 'scoot.co.uk', 'freeindex.co.uk',
-            'bark.com', 'rated-people.com', 'checkatrade.com', 'mybuilder.com',
-            'trustatrader.com', 'tradesman.net', 'habitissimo.',
-            'booking.', 'expedia.', 'airbnb.', 'hotels.com', 'kayak.',
-            'groupon.', 'wowcher.',
-            'google.com', 'bing.com', 'yahoo.com', 'reddit.com',
-            'wikipedia.org', 'wikimedia.',
-            'indeed.com', 'glassdoor.', 'reed.co.uk', 'totaljobs.', 'cv-library.',
-            'scrap.io', 'apollo.io', 'hunter.io', 'zoominfo.', 'clearbit.',
-            'lusha.', 'seamless.ai', 'snov.io', 'leadfeeder.',
-            'crunchbase.com', 'dnb.com', 'companieshouse.gov.uk',
-            'bloomberg.com', 'pitchbook.', 'owler.',
-            'bbc.co.uk', 'theguardian.', 'dailymail.', 'mirror.co.uk',
-            'amazon.', 'ebay.', 'etsy.', 'shopify.',
+            'facebook.com',
+            'instagram.com',
+            'linkedin.com',
+            'twitter.com',
+            'x.com',
+            'youtube.com',
+            'pinterest.com',
+            'tiktok.com',
+            'snapchat.com',
+            'yelp.',
+            'tripadvisor.',
+            'yellowpages.',
+            'foursquare.',
+            'mapquest.',
+            'yell.com',
+            'thomsonlocal.',
+            'scoot.co.uk',
+            'freeindex.co.uk',
+            'bark.com',
+            'rated-people.com',
+            'checkatrade.com',
+            'mybuilder.com',
+            'trustatrader.com',
+            'tradesman.net',
+            'habitissimo.',
+            'booking.',
+            'expedia.',
+            'airbnb.',
+            'hotels.com',
+            'kayak.',
+            'groupon.',
+            'wowcher.',
+            'google.com',
+            'bing.com',
+            'yahoo.com',
+            'reddit.com',
+            'wikipedia.org',
+            'wikimedia.',
+            'indeed.com',
+            'glassdoor.',
+            'reed.co.uk',
+            'totaljobs.',
+            'cv-library.',
+            'scrap.io',
+            'apollo.io',
+            'hunter.io',
+            'zoominfo.',
+            'clearbit.',
+            'lusha.',
+            'seamless.ai',
+            'snov.io',
+            'leadfeeder.',
+            'crunchbase.com',
+            'dnb.com',
+            'companieshouse.gov.uk',
+            'bloomberg.com',
+            'pitchbook.',
+            'owler.',
+            'bbc.co.uk',
+            'theguardian.',
+            'dailymail.',
+            'mirror.co.uk',
+            'amazon.',
+            'ebay.',
+            'etsy.',
+            'shopify.',
         ];
         const lowercase = domain.toLowerCase();
-        return blacklist.some(term => lowercase.includes(term));
+        return blacklist.some((term) => lowercase.includes(term));
     }
     getDomainName(urlStr) {
         try {
@@ -189,7 +261,7 @@ let FirecrawlService = FirecrawlService_1 = class FirecrawlService {
         }
     }
     sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
     sanitizeEmail(raw) {
         if (!raw)
@@ -206,7 +278,9 @@ let FirecrawlService = FirecrawlService_1 = class FirecrawlService {
         if (!raw)
             return undefined;
         const trimmed = raw.trim();
-        if (trimmed.startsWith('/') || trimmed.startsWith('#') || trimmed.startsWith('http'))
+        if (trimmed.startsWith('/') ||
+            trimmed.startsWith('#') ||
+            trimmed.startsWith('http'))
             return undefined;
         const digitCount = (trimmed.match(/\d/g) || []).length;
         if (digitCount < 7)
@@ -221,7 +295,7 @@ let FirecrawlService = FirecrawlService_1 = class FirecrawlService {
             `https://www.golden${cleanQuery}hub.com`,
             `https://www.family${cleanQuery}andco.net`,
             `https://www.urban${cleanQuery}.org`,
-            `https://www.craft${cleanQuery}masters.com`
+            `https://www.craft${cleanQuery}masters.com`,
         ];
     }
     generateMockScrapeResult(url) {
@@ -237,15 +311,18 @@ let FirecrawlService = FirecrawlService_1 = class FirecrawlService {
             linkedin: `https://linkedin.com/company/${domainName.toLowerCase()}`,
             twitter: `https://x.com/${domainName.toLowerCase()}`,
             address: `${Math.floor(10 + Math.random() * 200)} High Street, London, W1D 4ST, UK`,
-            description: `A premium, boutique business offering specialized services. We are dedicated to quality, customer satisfaction, and authentic products crafted locally.`
+            description: `A premium, boutique business offering specialized services. We are dedicated to quality, customer satisfaction, and authentic products crafted locally.`,
         };
     }
     isRelevantToQuery(query, scrapedDescription, companyName) {
         if (!scrapedDescription && !companyName)
             return true;
-        const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+        const queryWords = query
+            .toLowerCase()
+            .split(/\s+/)
+            .filter((w) => w.length > 3);
         const text = `${companyName} ${scrapedDescription}`.toLowerCase();
-        return queryWords.length === 0 || queryWords.some(w => text.includes(w));
+        return queryWords.length === 0 || queryWords.some((w) => text.includes(w));
     }
 };
 exports.FirecrawlService = FirecrawlService;

@@ -97,7 +97,7 @@ let EmailController = class EmailController {
         return this.emailService.updateDraftReply(id, body.subject, body.body);
     }
     async handleWebhook(payload) {
-        this.emailService.processInboundWebhook(payload).catch(err => {
+        this.emailService.processInboundWebhook(payload).catch((err) => {
             console.error('Error processing inbound webhook:', err);
         });
         return { received: true };

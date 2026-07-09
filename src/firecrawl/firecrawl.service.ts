@@ -23,9 +23,14 @@ export class FirecrawlService {
 
   constructor(private configService: ConfigService) {
     this.apiKey = this.configService.get<string>('FIRECRAWL_API_KEY') || '';
-    this.isMockMode = !this.apiKey || this.apiKey.trim() === '' || this.apiKey.startsWith('YOUR_');
+    this.isMockMode =
+      !this.apiKey ||
+      this.apiKey.trim() === '' ||
+      this.apiKey.startsWith('YOUR_');
     if (this.isMockMode) {
-      this.logger.warn('Firecrawl API key not set. Operating in Sandbox/Mock Mode.');
+      this.logger.warn(
+        'Firecrawl API key not set. Operating in Sandbox/Mock Mode.',
+      );
     } else {
       this.logger.log('Firecrawl API key detected. Operating in Live Mode.');
     }
@@ -53,21 +58,33 @@ export class FirecrawlService {
             Authorization: `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
-      if (response.data && response.data.success && Array.isArray(response.data.data)) {
+      if (
+        response.data &&
+        response.data.success &&
+        Array.isArray(response.data.data)
+      ) {
         const items: any[] = response.data.data;
         // Pass both URL and page title/description for smarter filtering
         const urls = this.filterAndNormalizeUrls(items, query, location);
-        this.logger.log(`Search returned ${items.length} raw results, filtered to ${urls.length} viable targets.`);
+        this.logger.log(
+          `Search returned ${items.length} raw results, filtered to ${urls.length} viable targets.`,
+        );
         return urls;
       }
 
-      this.logger.error('Invalid search response from Firecrawl:', response.data);
+      this.logger.error(
+        'Invalid search response from Firecrawl:',
+        response.data,
+      );
       return [];
     } catch (error: any) {
-      this.logger.error(`Firecrawl search failed: ${error.message}`, error.stack);
+      this.logger.error(
+        `Firecrawl search failed: ${error.message}`,
+        error.stack,
+      );
       throw new Error(`Failed to search via Firecrawl: ${error.message}`);
     }
   }
@@ -93,26 +110,45 @@ export class FirecrawlService {
             schema: {
               type: 'object',
               properties: {
-                company_name: { type: 'string', description: 'Name of the business' },
+                company_name: {
+                  type: 'string',
+                  description: 'Name of the business',
+                },
                 email: { type: 'string', description: 'Contact email address' },
                 phone: { type: 'string', description: 'Contact phone number' },
                 facebook: { type: 'string', description: 'Facebook page URL' },
-                instagram: { type: 'string', description: 'Instagram page URL' },
-                linkedin: { type: 'string', description: 'LinkedIn company or personal page URL' },
-                twitter: { type: 'string', description: 'Twitter/X profile URL' },
-                address: { type: 'string', description: 'Physical address of the business' },
-                description: { type: 'string', description: 'Brief description of the company and what they do' }
+                instagram: {
+                  type: 'string',
+                  description: 'Instagram page URL',
+                },
+                linkedin: {
+                  type: 'string',
+                  description: 'LinkedIn company or personal page URL',
+                },
+                twitter: {
+                  type: 'string',
+                  description: 'Twitter/X profile URL',
+                },
+                address: {
+                  type: 'string',
+                  description: 'Physical address of the business',
+                },
+                description: {
+                  type: 'string',
+                  description:
+                    'Brief description of the company and what they do',
+                },
               },
-              required: ['company_name']
-            }
-          }
+              required: ['company_name'],
+            },
+          },
         },
         {
           headers: {
             Authorization: `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       if (response.data && response.data.success && response.data.data?.json) {
@@ -127,7 +163,7 @@ export class FirecrawlService {
           linkedin: info.linkedin || null,
           twitter: info.twitter || null,
           address: info.address || null,
-          description: info.description || null
+          description: info.description || null,
         };
       }
 
@@ -135,17 +171,23 @@ export class FirecrawlService {
       return {
         companyName: this.getDomainName(url),
         website: url,
-        description: 'Scraped successfully, but no structured data returned.'
+        description: 'Scraped successfully, but no structured data returned.',
       };
     } catch (error: any) {
-      this.logger.error(`Firecrawl scraping failed for ${url}: ${error.message}`);
+      this.logger.error(
+        `Firecrawl scraping failed for ${url}: ${error.message}`,
+      );
       throw new Error(`Failed to scrape URL ${url}: ${error.message}`);
     }
   }
 
   // --- Helper Methods ---
 
-  private filterAndNormalizeUrls(items: any[], query: string, location: string): string[] {
+  private filterAndNormalizeUrls(
+    items: any[],
+    query: string,
+    location: string,
+  ): string[] {
     const domains = new Set<string>();
     const queryWords = query.toLowerCase().split(/\s+/);
     const locationWords = location.toLowerCase().split(/[,\s]+/);
@@ -160,11 +202,17 @@ export class FirecrawlService {
       if (!root || this.isDirectoryOrSocial(root)) continue;
 
       // Require at least one query keyword OR location word to appear in the page title/description
-      const hasQueryMatch = queryWords.some(w => w.length > 3 && snippet.includes(w));
-      const hasLocationMatch = locationWords.some(w => w.length > 2 && snippet.includes(w));
+      const hasQueryMatch = queryWords.some(
+        (w) => w.length > 3 && snippet.includes(w),
+      );
+      const hasLocationMatch = locationWords.some(
+        (w) => w.length > 2 && snippet.includes(w),
+      );
 
       if (!hasQueryMatch && !hasLocationMatch) {
-        this.logger.warn(`Skipping irrelevant result: ${root} (no keyword match in title/description)`);
+        this.logger.warn(
+          `Skipping irrelevant result: ${root} (no keyword match in title/description)`,
+        );
         continue;
       }
 
@@ -186,34 +234,83 @@ export class FirecrawlService {
   private isDirectoryOrSocial(domain: string): boolean {
     const blacklist = [
       // Social media
-      'facebook.com', 'instagram.com', 'linkedin.com', 'twitter.com', 'x.com',
-      'youtube.com', 'pinterest.com', 'tiktok.com', 'snapchat.com',
+      'facebook.com',
+      'instagram.com',
+      'linkedin.com',
+      'twitter.com',
+      'x.com',
+      'youtube.com',
+      'pinterest.com',
+      'tiktok.com',
+      'snapchat.com',
       // Review / directory sites
-      'yelp.', 'tripadvisor.', 'yellowpages.', 'foursquare.', 'mapquest.',
-      'yell.com', 'thomsonlocal.', 'scoot.co.uk', 'freeindex.co.uk',
-      'bark.com', 'rated-people.com', 'checkatrade.com', 'mybuilder.com',
-      'trustatrader.com', 'tradesman.net', 'habitissimo.',
+      'yelp.',
+      'tripadvisor.',
+      'yellowpages.',
+      'foursquare.',
+      'mapquest.',
+      'yell.com',
+      'thomsonlocal.',
+      'scoot.co.uk',
+      'freeindex.co.uk',
+      'bark.com',
+      'rated-people.com',
+      'checkatrade.com',
+      'mybuilder.com',
+      'trustatrader.com',
+      'tradesman.net',
+      'habitissimo.',
       // Travel / booking
-      'booking.', 'expedia.', 'airbnb.', 'hotels.com', 'kayak.',
+      'booking.',
+      'expedia.',
+      'airbnb.',
+      'hotels.com',
+      'kayak.',
       // Deal sites
-      'groupon.', 'wowcher.',
+      'groupon.',
+      'wowcher.',
       // Search engines & major platforms
-      'google.com', 'bing.com', 'yahoo.com', 'reddit.com',
-      'wikipedia.org', 'wikimedia.',
+      'google.com',
+      'bing.com',
+      'yahoo.com',
+      'reddit.com',
+      'wikipedia.org',
+      'wikimedia.',
       // Job boards
-      'indeed.com', 'glassdoor.', 'reed.co.uk', 'totaljobs.', 'cv-library.',
+      'indeed.com',
+      'glassdoor.',
+      'reed.co.uk',
+      'totaljobs.',
+      'cv-library.',
       // Data / B2B intelligence & scraping platforms
-      'scrap.io', 'apollo.io', 'hunter.io', 'zoominfo.', 'clearbit.',
-      'lusha.', 'seamless.ai', 'snov.io', 'leadfeeder.',
-      'crunchbase.com', 'dnb.com', 'companieshouse.gov.uk',
-      'bloomberg.com', 'pitchbook.', 'owler.',
+      'scrap.io',
+      'apollo.io',
+      'hunter.io',
+      'zoominfo.',
+      'clearbit.',
+      'lusha.',
+      'seamless.ai',
+      'snov.io',
+      'leadfeeder.',
+      'crunchbase.com',
+      'dnb.com',
+      'companieshouse.gov.uk',
+      'bloomberg.com',
+      'pitchbook.',
+      'owler.',
       // News / media
-      'bbc.co.uk', 'theguardian.', 'dailymail.', 'mirror.co.uk',
+      'bbc.co.uk',
+      'theguardian.',
+      'dailymail.',
+      'mirror.co.uk',
       // E-commerce giants
-      'amazon.', 'ebay.', 'etsy.', 'shopify.',
+      'amazon.',
+      'ebay.',
+      'etsy.',
+      'shopify.',
     ];
     const lowercase = domain.toLowerCase();
-    return blacklist.some(term => lowercase.includes(term));
+    return blacklist.some((term) => lowercase.includes(term));
   }
 
   private getDomainName(urlStr: string): string {
@@ -231,7 +328,7 @@ export class FirecrawlService {
   }
 
   private sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -258,7 +355,12 @@ export class FirecrawlService {
     if (!raw) return undefined;
     const trimmed = raw.trim();
     // Reject obvious non-phone values
-    if (trimmed.startsWith('/') || trimmed.startsWith('#') || trimmed.startsWith('http')) return undefined;
+    if (
+      trimmed.startsWith('/') ||
+      trimmed.startsWith('#') ||
+      trimmed.startsWith('http')
+    )
+      return undefined;
     // Must have at least 7 digits
     const digitCount = (trimmed.match(/\d/g) || []).length;
     if (digitCount < 7) return undefined;
@@ -276,7 +378,7 @@ export class FirecrawlService {
       `https://www.golden${cleanQuery}hub.com`,
       `https://www.family${cleanQuery}andco.net`,
       `https://www.urban${cleanQuery}.org`,
-      `https://www.craft${cleanQuery}masters.com`
+      `https://www.craft${cleanQuery}masters.com`,
     ];
   }
 
@@ -294,17 +396,24 @@ export class FirecrawlService {
       linkedin: `https://linkedin.com/company/${domainName.toLowerCase()}`,
       twitter: `https://x.com/${domainName.toLowerCase()}`,
       address: `${Math.floor(10 + Math.random() * 200)} High Street, London, W1D 4ST, UK`,
-      description: `A premium, boutique business offering specialized services. We are dedicated to quality, customer satisfaction, and authentic products crafted locally.`
+      description: `A premium, boutique business offering specialized services. We are dedicated to quality, customer satisfaction, and authentic products crafted locally.`,
     };
   }
   /**
    * Post-scrape relevance check — returns true if the scraped result is relevant to the original query
    */
-  isRelevantToQuery(query: string, scrapedDescription: string, companyName: string): boolean {
+  isRelevantToQuery(
+    query: string,
+    scrapedDescription: string,
+    companyName: string,
+  ): boolean {
     if (!scrapedDescription && !companyName) return true; // can't judge, keep it
-    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+    const queryWords = query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 3);
     const text = `${companyName} ${scrapedDescription}`.toLowerCase();
     // At least one query keyword must appear somewhere in the scraped content
-    return queryWords.length === 0 || queryWords.some(w => text.includes(w));
+    return queryWords.length === 0 || queryWords.some((w) => text.includes(w));
   }
 }

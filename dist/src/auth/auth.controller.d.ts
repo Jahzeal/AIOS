@@ -19,4 +19,11 @@ export declare class AuthController {
         token: string;
         email: string;
     }>;
+    getGoogleClientId(): Promise<{
+        clientId: string | null;
+    }>;
+    googleLogin(body: any): Promise<{
+        token: string;
+        email: string;
+    }>;
 }

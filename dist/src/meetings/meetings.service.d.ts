@@ -28,22 +28,46 @@ export declare class MeetingsService {
         id: string;
         email: string;
         createdAt: Date;
+        updatedAt: Date;
+        status: string | null;
         leadId: string;
         title: string;
         meetingLink: string;
         scheduledAt: Date;
+        googleEventId: string | null;
     }>;
     createMeetingByEmail(email: string, title: string, meetingLink: string, scheduledAt: string): Promise<{
         id: string;
         email: string;
         createdAt: Date;
+        updatedAt: Date;
+        status: string | null;
         leadId: string;
         title: string;
         meetingLink: string;
         scheduledAt: Date;
+        googleEventId: string | null;
     }>;
     findAllMeetings(userId?: string): Promise<({
         lead: {
+            job: {
+                user: {
+                    email: string;
+                    username: string | null;
+                } | null;
+            } & {
+                query: string | null;
+                error: string | null;
+                id: string;
+                userId: string | null;
+                createdAt: Date;
+                updatedAt: Date;
+                status: string;
+                type: string;
+                location: string | null;
+                keywords: string | null;
+            };
+        } & {
             id: string;
             email: string | null;
             createdAt: Date;
@@ -68,10 +92,13 @@ export declare class MeetingsService {
         id: string;
         email: string;
         createdAt: Date;
+        updatedAt: Date;
+        status: string | null;
         leadId: string;
         title: string;
         meetingLink: string;
         scheduledAt: Date;
+        googleEventId: string | null;
     })[]>;
     deleteMeeting(id: string): Promise<{
         success: boolean;

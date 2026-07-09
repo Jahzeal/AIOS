@@ -36,6 +36,7 @@ export default function Dashboard({ token, onLogout }) {
   const [settings,    setSettings]    = useState(null);
   const [msg,         setMsg]         = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
+  const [googleConnection, setGoogleConnection] = useState(null);
   const [leadFilterJobId, setLeadFilterJobId] = useState(null);
   const [selectedOutreachLeadId, setSelectedOutreachLeadId] = useState(null);
 
@@ -87,7 +88,7 @@ export default function Dashboard({ token, onLogout }) {
         body: JSON.stringify({
           query: filterIndustry,
           location: filterLocation,
-          keywords: filterTitles,
+          keywords: [filterTitles, filterKeywords].filter(e => e && e.trim()).join(','),
         })
       });
       if (res.ok) {
@@ -104,13 +105,14 @@ export default function Dashboard({ token, onLogout }) {
 
   const loadAll = useCallback(async () => {
     try {
-      const [j, l, s, r, m, em] = await Promise.all([
+      const [j, l, s, r, m, em, gc] = await Promise.all([
         API('/api/jobs',           token).then(r => r.json()),
         API('/api/leads',          token).then(r => r.json()),
         API('/api/email/settings', token).then(r => r.json()),
         API('/api/email/replies',  token).then(r => r.json()),
         API('/api/meetings',       token).then(r => r.json()),
         API('/api/email/status',   token).then(r => r.json()),
+        API('/api/meetings/google/connection', token).then(r => r.json()).catch(() => ({ connected: false })),
       ]);
       setJobs(Array.isArray(j) ? j : []);
       setLeads(Array.isArray(l) ? l : []);
@@ -118,6 +120,7 @@ export default function Dashboard({ token, onLogout }) {
       setReplies(Array.isArray(r) ? r : []);
       setMeetings(Array.isArray(m) ? m : []);
       setEmailStats(em || { sentToday: 0, dailyCap: 15 });
+      setGoogleConnection(gc);
     } catch (e) { console.error(e); }
   }, [token]);
 
@@ -129,8 +132,41 @@ export default function Dashboard({ token, onLogout }) {
     setMeetings([]);
     setSettings(null);
     setEmailStats({ sentToday: 0, dailyCap: 15 });
+    setGoogleConnection(null);
     if (token) loadAll();
   }, [token]);
+
+  // Handle Google Calendar Connection code redirect
+  useEffect(() => {
+    if (!token) return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (code) {
+      const newUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, document.title, newUrl);
+
+      const connectCalendar = async () => {
+        notify('🔗 Connecting Google Calendar...');
+        try {
+          const res = await API('/api/meetings/google/connect', token, {
+            method: 'POST',
+            body: JSON.stringify({ code }),
+          });
+          if (res.ok) {
+            notify('✅ Google Calendar connected successfully!');
+            setActiveTab('settings');
+            loadAll();
+          } else {
+            const err = await res.json();
+            notify(`❌ Connection failed: ${err.message}`);
+          }
+        } catch {
+          notify('❌ Connection failed due to network error');
+        }
+      };
+      connectCalendar();
+    }
+  }, [token, loadAll, notify]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -170,7 +206,7 @@ export default function Dashboard({ token, onLogout }) {
 
   /* Map tab id → panel component */
   const panels = {
-    overview:  <Overview      jobs={jobs} leads={leads} emailStats={emailStats} />,
+    overview:  <Overview      jobs={jobs} leads={leads} emailStats={emailStats} googleConnection={googleConnection} onNavigate={setActiveTab} />,
     discovery: <Discovery     token={token} jobs={jobs} onRefresh={loadAll} onNotify={notify} onViewJobLeads={handleViewJobLeads} settings={settings} />,
     leads:     <LeadsPanel    token={token} leads={leads} jobs={jobs} leadFilterJobId={leadFilterJobId} setLeadFilterJobId={setLeadFilterJobId} onNotify={notify} onRefresh={loadAll} />,
     outreach:  <OutreachPanel leads={leads} selectedLeadId={selectedOutreachLeadId} setSelectedLeadId={setSelectedOutreachLeadId} token={token} onLoadAll={loadAll} />,
@@ -179,7 +215,7 @@ export default function Dashboard({ token, onLogout }) {
       setActiveTab('outreach');
     }} />,
     meetings:  <MeetingsPanel meetings={meetings} />,
-    settings:  <SettingsPanel token={token} settings={settings} setSettings={setSettings} onNotify={notify} />,
+    settings:  <SettingsPanel token={token} settings={settings} setSettings={setSettings} googleConnection={googleConnection} onRefreshConnection={loadAll} onNotify={notify} />,
   };
 
   /* ─── Shared inline style helpers ─── */

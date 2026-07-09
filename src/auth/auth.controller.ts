@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any */
 import {
   Controller,
   Post,
@@ -21,7 +22,8 @@ export class AuthController {
   @Post('login')
   async login(@Body() body: any) {
     const { email, password } = body;
-    if (!email || !password) throw new UnauthorizedException('Email and password required');
+    if (!email || !password)
+      throw new UnauthorizedException('Email and password required');
 
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
@@ -38,7 +40,8 @@ export class AuthController {
   // ─── Me ──────────────────────────────────────────────────────────
   @Get('me')
   async me(@Headers('authorization') authHeader: string) {
-    if (!authHeader?.startsWith('Bearer ')) throw new UnauthorizedException('Missing token');
+    if (!authHeader?.startsWith('Bearer '))
+      throw new UnauthorizedException('Missing token');
     const token = authHeader.substring(7);
     const session = this.authService.validateToken(token);
     if (!session) throw new UnauthorizedException('Invalid or expired token');
@@ -70,7 +73,9 @@ export class AuthController {
     const { username, email, password, code } = body;
 
     if (!username || !email || !password || !code) {
-      throw new BadRequestException('All fields including the verification code are required');
+      throw new BadRequestException(
+        'All fields including the verification code are required',
+      );
     }
 
     const valid = this.authService.verifyOtp(email, code);
@@ -95,5 +100,19 @@ export class AuthController {
 
     const token = this.authService.createToken(user.id, user.email);
     return { token, email: user.email };
+  }
+
+  // ─── Google Sign-In ────────────────────────────────────────────────
+  @Get('google/client-id')
+  async getGoogleClientId() {
+    const clientId = this.authService.getGoogleClientId();
+    return { clientId };
+  }
+
+  @Post('google')
+  async googleLogin(@Body() body: any) {
+    const { credential } = body;
+    if (!credential) throw new BadRequestException('Credential token required');
+    return this.authService.googleLogin(credential);
   }
 }

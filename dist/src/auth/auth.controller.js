@@ -84,6 +84,16 @@ let AuthController = class AuthController {
         const token = this.authService.createToken(user.id, user.email);
         return { token, email: user.email };
     }
+    async getGoogleClientId() {
+        const clientId = this.authService.getGoogleClientId();
+        return { clientId };
+    }
+    async googleLogin(body) {
+        const { credential } = body;
+        if (!credential)
+            throw new common_1.BadRequestException('Credential token required');
+        return this.authService.googleLogin(credential);
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -114,6 +124,19 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "register", null);
+__decorate([
+    (0, common_1.Get)('google/client-id'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "getGoogleClientId", null);
+__decorate([
+    (0, common_1.Post)('google'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "googleLogin", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('api/auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService,

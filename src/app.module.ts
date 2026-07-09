@@ -39,4 +39,3 @@ import { AuthGuard } from './auth/auth.guard';
   ],
 })
 export class AppModule {}
-

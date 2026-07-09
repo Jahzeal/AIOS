@@ -23,6 +23,7 @@ let AuthGuard = class AuthGuard {
         if (url.includes('/api/auth/login') ||
             url.includes('/api/auth/register') ||
             url.includes('/api/auth/send-code') ||
+            url.includes('/api/auth/google') ||
             url.includes('/api/email/unsubscribe') ||
             url.includes('/api/email/webhook')) {
             return true;

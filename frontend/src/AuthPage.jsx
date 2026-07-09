@@ -135,6 +135,93 @@ export default function AuthPage({ setToken }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
   const [orbs, setOrbs] = useState([]);
+  const [googleClientId, setGoogleClientId] = useState(null);
+
+  // Fetch Google Client ID on mount
+  useEffect(() => {
+    fetch('/api/auth/google/client-id')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.clientId) {
+          setGoogleClientId(data.clientId);
+        }
+      })
+      .catch((err) => console.error('Failed to fetch Google Client ID:', err));
+  }, []);
+
+  // Load Google Identity Services SDK
+  useEffect(() => {
+    if (!googleClientId) return;
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, [googleClientId]);
+
+  // Handle Google Token Response
+  const handleGoogleLoginSuccess = async (response) => {
+    const credential = response.credential;
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('token', data.token);
+        setToken(data.token);
+      } else {
+        const err = await res.json();
+        setError(err.message || 'Google Sign-In failed');
+      }
+    } catch {
+      setError('Network error — please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initialize and Render Google Sign-in button
+  useEffect(() => {
+    if (!googleClientId || mode === 'verify') return;
+
+    const initGoogle = () => {
+      if (typeof window.google === 'undefined') {
+        setTimeout(initGoogle, 100);
+        return;
+      }
+
+      try {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleLoginSuccess,
+        });
+
+        const container = document.getElementById('google-signin-btn-container');
+        if (container) {
+          window.google.accounts.id.renderButton(container, {
+            theme: 'outline',
+            size: 'large',
+            width: 360,
+            text: 'continue_with',
+            shape: 'pill',
+            logo_alignment: 'center',
+          });
+        }
+      } catch (err) {
+        console.error('Error initializing Google Identity Services:', err);
+      }
+    };
+
+    initGoogle();
+  }, [googleClientId, mode]);
 
   useEffect(() => {
     setOrbs(
@@ -431,6 +518,10 @@ export default function AuthPage({ setToken }) {
           .auth-left { display: none !important; }
           .auth-right { flex: 1 !important; }
         }
+        @keyframes buttonPulse {
+          0% { opacity: 0.6; }
+          100% { opacity: 0.95; }
+        }
       `}</style>
 
       <div style={S.page}>
@@ -625,6 +716,34 @@ export default function AuthPage({ setToken }) {
                       {loading ? 'Sending code…' : '→  Send Verification Code'}
                     </button>
                   </form>
+                )}
+
+                {/* Google Sign In Divider and Button */}
+                {googleClientId && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0', color: 'rgba(248,250,252,0.35)', fontSize: '0.8rem' }}>
+                      <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+                      <span style={{ padding: '0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>or</span>
+                      <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+                    </div>
+                    <div id="google-signin-btn-container" style={{ display: 'flex', justifyContent: 'center', minHeight: '40px', width: '100%' }}>
+                      <div style={{
+                        width: 360, height: 40, borderRadius: 20,
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.82rem', color: 'rgba(248,250,252,0.35)',
+                        animation: 'buttonPulse 1.2s infinite alternate',
+                        pointerEvents: 'none',
+                        fontFamily: 'inherit',
+                      }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" style={{ marginRight: 10, fill: 'currentColor' }}>
+                          <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.44 0-6.228-2.788-6.228-6.228 0-3.44 2.788-6.228 6.228-6.228 1.492 0 2.855.526 3.93 1.402l3.125-3.125C18.995 2.127 15.827 1 12.24 1 6.033 1 12.24 12.24s5.033 11.24 11.24 11.24c6.478 0 11.24-4.55 11.24-11.24 0-.768-.068-1.514-.2-2.222H12.24z"/>
+                        </svg>
+                        Loading Google Account details…
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 <div style={S.footer}>
