@@ -1,5 +1,7 @@
 /* ─── Shared utilities, styles, and components for all dashboard panels ─── */
 
+let isRedirectingToLogin = false;
+
 export const API = async (path, token, opts = {}) => {
   const res = await fetch(path, {
     ...opts,
@@ -10,9 +12,12 @@ export const API = async (path, token, opts = {}) => {
     },
   });
   if (res.status === 401) {
-    alert("Login expired, please login");
-    localStorage.clear();
-    window.location.href = '/';
+    if (!isRedirectingToLogin) {
+      isRedirectingToLogin = true;
+      alert("Login expired, please login");
+      localStorage.clear();
+      window.location.href = '/';
+    }
     return new Promise(() => {}); // Halt subsequent .then() or await chains
   }
   return res;

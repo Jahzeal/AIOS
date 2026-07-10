@@ -210,7 +210,7 @@ export default function AuthPage({ setToken }) {
             theme: 'outline',
             size: 'large',
             width: 360,
-            text: 'continue_with',
+            text: 'signin_with',
             shape: 'pill',
             logo_alignment: 'center',
           });
