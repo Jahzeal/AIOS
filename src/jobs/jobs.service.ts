@@ -329,7 +329,9 @@ export class JobsService implements OnModuleInit {
                 matchingContacts = matchingContacts.filter((c) => {
                   const roleLower = (c.role || '').toLowerCase();
                   return titleKeywords.some((keyword) => {
-                    if (roleLower.includes(keyword)) return true;
+                    const escapedKeyword = keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                    const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
+                    if (regex.test(roleLower)) return true;
                     const words = roleLower
                       .split(/[\s\-\/]+/)
                       .filter((w) => w && w !== 'of' && w !== 'and' && w !== 'the');
@@ -577,7 +579,9 @@ export class JobsService implements OnModuleInit {
                 matchingContacts = matchingContacts.filter((c) => {
                   const roleLower = (c.role || '').toLowerCase();
                   return titleKeywords.some((keyword) => {
-                    if (roleLower.includes(keyword)) return true;
+                    const escapedKeyword = keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                    const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
+                    if (regex.test(roleLower)) return true;
                     const words = roleLower
                       .split(/[\s\-\/]+/)
                       .filter((w) => w && w !== 'of' && w !== 'and' && w !== 'the');
@@ -829,8 +833,10 @@ export class JobsService implements OnModuleInit {
           mergedContacts = mergedContacts.filter((c) => {
             const roleLower = (c.role || '').toLowerCase();
             return titleKeywords.some((keyword) => {
-              // 1. Direct substring match (e.g., "cto" matches "CTO" or "director" matches "director of it")
-              if (roleLower.includes(keyword)) return true;
+              // 1. Direct substring match with word boundaries (e.g., "cto" matches "CTO", "director" matches "Director")
+              const escapedKeyword = keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+              const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
+              if (regex.test(roleLower)) return true;
 
               // 2. Dynamic Acronym Matching (e.g., "cto" matches "Chief Technology Officer")
               // Split role into words, ignoring common B2B stopwords
