@@ -380,7 +380,10 @@ let JobsService = JobsService_1 = class JobsService {
             });
             let statusMsg = null;
             if (finalLeadCount === 0) {
-                statusMsg = 'No leads found matching your target titles. Try adding more general keywords (e.g. Owner, Founder, Manager) to capture more contacts.';
+                const attemptedTitle = job.keywords || 'target titles';
+                const query = job.query || 'unknown';
+                const suggestions = await this.emailService.getAlternativeTitles(query, attemptedTitle);
+                statusMsg = `No leads found matching "${attemptedTitle}". AI Suggestion: Try targeting: ${suggestions}`;
             }
             else if (finalLeadCount < 3) {
                 statusMsg = `Only ${finalLeadCount} lead${finalLeadCount > 1 ? 's' : ''} found matching your target titles. If you want more results, try adding alternative titles/keywords in the sidebar (e.g. CEO, Director) to expand the search.`;
@@ -562,7 +565,10 @@ let JobsService = JobsService_1 = class JobsService {
             });
             let statusMsg = null;
             if (finalLeadCount === 0) {
-                statusMsg = 'No leads found matching your target titles. Try adding more general keywords (e.g. Owner, Founder, Manager) to capture more contacts.';
+                const attemptedTitle = job.keywords || 'target titles';
+                const query = 'this website list';
+                const suggestions = await this.emailService.getAlternativeTitles(query, attemptedTitle);
+                statusMsg = `No leads found matching "${attemptedTitle}". AI Suggestion: Try targeting: ${suggestions}`;
             }
             else if (finalLeadCount < 3) {
                 statusMsg = `Only ${finalLeadCount} lead${finalLeadCount > 1 ? 's' : ''} found matching your target titles. If you want more results, try adding alternative titles/keywords in the sidebar (e.g. CEO, Director) to expand the search.`;
