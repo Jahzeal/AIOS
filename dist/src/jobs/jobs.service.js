@@ -242,9 +242,44 @@ let JobsService = JobsService_1 = class JobsService {
                         include: { contacts: true },
                     });
                     if (cachedLead) {
-                        this.logger.log(`Found cached scrape result for ${lead.website}. Skipping live crawl.`);
-                        const hasEmail = cachedLead.email && cachedLead.email.trim() !== '';
-                        if (!hasEmail) {
+                        this.logger.log(`Found cached scrape result for ${lead.website}. Filtering contacts...`);
+                        let filterKeywords = job.keywords;
+                        if (!filterKeywords) {
+                            try {
+                                const settings = job.userId
+                                    ? await this.prisma.settings.findFirst({ where: { userId: job.userId } })
+                                    : await this.prisma.settings.findFirst();
+                                if (settings && settings.crawlKeywords) {
+                                    filterKeywords = settings.crawlKeywords;
+                                }
+                            }
+                            catch { }
+                        }
+                        let matchingContacts = cachedLead.contacts || [];
+                        if (filterKeywords && filterKeywords.trim()) {
+                            const titleKeywords = filterKeywords
+                                .split(',')
+                                .map((k) => k.trim().toLowerCase())
+                                .filter(Boolean);
+                            if (titleKeywords.length > 0) {
+                                matchingContacts = matchingContacts.filter((c) => {
+                                    const roleLower = (c.role || '').toLowerCase();
+                                    return titleKeywords.some((keyword) => {
+                                        if (roleLower.includes(keyword))
+                                            return true;
+                                        const words = roleLower
+                                            .split(/[\s\-\/]+/)
+                                            .filter((w) => w && w !== 'of' && w !== 'and' && w !== 'the');
+                                        const initials = words.map((w) => w.charAt(0)).join('');
+                                        if (initials === keyword || initials.includes(keyword))
+                                            return true;
+                                        return false;
+                                    });
+                                });
+                            }
+                        }
+                        if (matchingContacts.length === 0) {
+                            this.logger.log(`No matching contacts found in cached lead for ${lead.website}. Discarding lead.`);
                             await this.prisma.lead.delete({
                                 where: { id: lead.id },
                             });
@@ -264,18 +299,16 @@ let JobsService = JobsService_1 = class JobsService {
                                     description: cachedLead.description,
                                 },
                             });
-                            if (cachedLead.contacts && cachedLead.contacts.length > 0) {
-                                for (const cachedContact of cachedLead.contacts) {
-                                    await this.prisma.contact.create({
-                                        data: {
-                                            leadId: lead.id,
-                                            name: cachedContact.name,
-                                            role: cachedContact.role,
-                                            email: cachedContact.email,
-                                            linkedin: cachedContact.linkedin,
-                                        },
-                                    });
-                                }
+                            for (const cachedContact of matchingContacts) {
+                                await this.prisma.contact.create({
+                                    data: {
+                                        leadId: lead.id,
+                                        name: cachedContact.name,
+                                        role: cachedContact.role,
+                                        email: cachedContact.email,
+                                        linkedin: cachedContact.linkedin,
+                                    },
+                                });
                             }
                             const settings = await this.emailService.getSettings();
                             if (settings.autoRespond &&
@@ -288,6 +321,15 @@ let JobsService = JobsService_1 = class JobsService {
                         }
                         continue;
                     }
+                    const candidateCompanyName = this.getDomainName(lead.website);
+                    this.logger.log(`Job ${job.id}: Fetching contacts for ${lead.website} (Candidate: ${candidateCompanyName}) before scraping...`);
+                    const enrichedContacts = await this.enrichLeadWithContacts(lead.id, lead.website, candidateCompanyName);
+                    if (!enrichedContacts || enrichedContacts === 0) {
+                        this.logger.warn(`Job ${job.id}: No target decision-maker contacts found for ${lead.website}. Discarding lead.`);
+                        await this.prisma.lead.delete({ where: { id: lead.id } });
+                        continue;
+                    }
+                    this.logger.log(`Job ${job.id}: Decision-maker contacts found. Scraping ${lead.website} now...`);
                     const scrapedData = await this.firecrawl.scrape(lead.website);
                     if (job.query &&
                         !this.firecrawl.isRelevantToQuery(job.query, scrapedData.description || '', scrapedData.companyName)) {
@@ -309,7 +351,6 @@ let JobsService = JobsService_1 = class JobsService {
                             description: scrapedData.description || null,
                         },
                     });
-                    const enrichedContacts = await this.enrichLeadWithContacts(lead.id, lead.website, scrapedData.companyName);
                     const settings = await this.emailService.getSettings();
                     const hasContactsOrEmail = (enrichedContacts && enrichedContacts > 0) ||
                         (updatedLead.email && updatedLead.email.trim() !== '');
@@ -324,7 +365,7 @@ let JobsService = JobsService_1 = class JobsService {
                     }
                 }
                 catch (scrapeErr) {
-                    this.logger.error(`Job ${job.id}: Failed to scrape domain ${lead.website} - ${scrapeErr.message}`);
+                    this.logger.error(`Job ${job.id}: Failed to process domain ${lead.website} - ${scrapeErr.message}`);
                     await this.prisma.lead.update({
                         where: { id: lead.id },
                         data: {
@@ -334,11 +375,24 @@ let JobsService = JobsService_1 = class JobsService {
                     });
                 }
             }
+            const finalLeadCount = await this.prisma.lead.count({
+                where: { jobId: job.id },
+            });
+            let statusMsg = null;
+            if (finalLeadCount === 0) {
+                statusMsg = 'No leads found matching your target titles. Try adding more general keywords (e.g. Owner, Founder, Manager) to capture more contacts.';
+            }
+            else if (finalLeadCount < 3) {
+                statusMsg = `Only ${finalLeadCount} lead${finalLeadCount > 1 ? 's' : ''} found matching your target titles. If you want more results, try adding alternative titles/keywords in the sidebar (e.g. CEO, Director) to expand the search.`;
+            }
             await this.prisma.job.update({
                 where: { id: job.id },
-                data: { status: 'COMPLETED' },
+                data: {
+                    status: 'COMPLETED',
+                    error: statusMsg,
+                },
             });
-            this.logger.log(`Job ${job.id} completed successfully.`);
+            this.logger.log(`Job ${job.id} completed. Status message: ${statusMsg || 'Success (3+ leads)'}`);
         }
         catch (err) {
             this.logger.error(`Job ${job.id} failed: ${err.message}`);
@@ -376,9 +430,44 @@ let JobsService = JobsService_1 = class JobsService {
                         include: { contacts: true },
                     });
                     if (cachedLead) {
-                        this.logger.log(`Found cached scrape result for ${lead.website}. Skipping live crawl.`);
-                        const hasEmail = cachedLead.email && cachedLead.email.trim() !== '';
-                        if (!hasEmail) {
+                        this.logger.log(`Found cached scrape result for ${lead.website}. Filtering contacts...`);
+                        let filterKeywords = job.keywords;
+                        if (!filterKeywords) {
+                            try {
+                                const settings = job.userId
+                                    ? await this.prisma.settings.findFirst({ where: { userId: job.userId } })
+                                    : await this.prisma.settings.findFirst();
+                                if (settings && settings.crawlKeywords) {
+                                    filterKeywords = settings.crawlKeywords;
+                                }
+                            }
+                            catch { }
+                        }
+                        let matchingContacts = cachedLead.contacts || [];
+                        if (filterKeywords && filterKeywords.trim()) {
+                            const titleKeywords = filterKeywords
+                                .split(',')
+                                .map((k) => k.trim().toLowerCase())
+                                .filter(Boolean);
+                            if (titleKeywords.length > 0) {
+                                matchingContacts = matchingContacts.filter((c) => {
+                                    const roleLower = (c.role || '').toLowerCase();
+                                    return titleKeywords.some((keyword) => {
+                                        if (roleLower.includes(keyword))
+                                            return true;
+                                        const words = roleLower
+                                            .split(/[\s\-\/]+/)
+                                            .filter((w) => w && w !== 'of' && w !== 'and' && w !== 'the');
+                                        const initials = words.map((w) => w.charAt(0)).join('');
+                                        if (initials === keyword || initials.includes(keyword))
+                                            return true;
+                                        return false;
+                                    });
+                                });
+                            }
+                        }
+                        if (matchingContacts.length === 0) {
+                            this.logger.log(`No matching contacts found in cached lead for ${lead.website}. Discarding lead.`);
                             await this.prisma.lead.delete({
                                 where: { id: lead.id },
                             });
@@ -398,18 +487,16 @@ let JobsService = JobsService_1 = class JobsService {
                                     description: cachedLead.description,
                                 },
                             });
-                            if (cachedLead.contacts && cachedLead.contacts.length > 0) {
-                                for (const cachedContact of cachedLead.contacts) {
-                                    await this.prisma.contact.create({
-                                        data: {
-                                            leadId: lead.id,
-                                            name: cachedContact.name,
-                                            role: cachedContact.role,
-                                            email: cachedContact.email,
-                                            linkedin: cachedContact.linkedin,
-                                        },
-                                    });
-                                }
+                            for (const cachedContact of matchingContacts) {
+                                await this.prisma.contact.create({
+                                    data: {
+                                        leadId: lead.id,
+                                        name: cachedContact.name,
+                                        role: cachedContact.role,
+                                        email: cachedContact.email,
+                                        linkedin: cachedContact.linkedin,
+                                    },
+                                });
                             }
                             const settings = await this.emailService.getSettings();
                             if (settings.autoRespond &&
@@ -422,6 +509,15 @@ let JobsService = JobsService_1 = class JobsService {
                         }
                         continue;
                     }
+                    const candidateCompanyName = this.getDomainName(lead.website);
+                    this.logger.log(`Job ${job.id}: Fetching contacts for ${lead.website} (Candidate: ${candidateCompanyName}) before scraping...`);
+                    const enrichedContacts2 = await this.enrichLeadWithContacts(lead.id, lead.website, candidateCompanyName);
+                    if (!enrichedContacts2 || enrichedContacts2 === 0) {
+                        this.logger.warn(`Job ${job.id}: No target decision-maker contacts found for ${lead.website}. Discarding lead.`);
+                        await this.prisma.lead.delete({ where: { id: lead.id } });
+                        continue;
+                    }
+                    this.logger.log(`Job ${job.id}: Decision-maker contacts found. Scraping ${lead.website} now...`);
                     const scrapedData = await this.firecrawl.scrape(lead.website);
                     const updatedLead = await this.prisma.lead.update({
                         where: { id: lead.id },
@@ -437,7 +533,6 @@ let JobsService = JobsService_1 = class JobsService {
                             description: scrapedData.description || null,
                         },
                     });
-                    const enrichedContacts2 = await this.enrichLeadWithContacts(lead.id, lead.website, scrapedData.companyName);
                     const settings = await this.emailService.getSettings();
                     const hasContactsOrEmail2 = enrichedContacts2 > 0 ||
                         (updatedLead.email && updatedLead.email.trim() !== '');
@@ -452,7 +547,7 @@ let JobsService = JobsService_1 = class JobsService {
                     }
                 }
                 catch (scrapeErr) {
-                    this.logger.error(`Job ${job.id}: Failed to scrape domain ${lead.website} - ${scrapeErr.message}`);
+                    this.logger.error(`Job ${job.id}: Failed to process domain ${lead.website} - ${scrapeErr.message}`);
                     await this.prisma.lead.update({
                         where: { id: lead.id },
                         data: {
@@ -462,11 +557,24 @@ let JobsService = JobsService_1 = class JobsService {
                     });
                 }
             }
+            const finalLeadCount = await this.prisma.lead.count({
+                where: { jobId: job.id },
+            });
+            let statusMsg = null;
+            if (finalLeadCount === 0) {
+                statusMsg = 'No leads found matching your target titles. Try adding more general keywords (e.g. Owner, Founder, Manager) to capture more contacts.';
+            }
+            else if (finalLeadCount < 3) {
+                statusMsg = `Only ${finalLeadCount} lead${finalLeadCount > 1 ? 's' : ''} found matching your target titles. If you want more results, try adding alternative titles/keywords in the sidebar (e.g. CEO, Director) to expand the search.`;
+            }
             await this.prisma.job.update({
                 where: { id: job.id },
-                data: { status: 'COMPLETED' },
+                data: {
+                    status: 'COMPLETED',
+                    error: statusMsg,
+                },
             });
-            this.logger.log(`Job ${job.id} completed successfully.`);
+            this.logger.log(`Job ${job.id} completed. Status message: ${statusMsg || 'Success (3+ leads)'}`);
         }
         catch (err) {
             this.logger.error(`Job ${job.id} failed: ${err.message}`);
@@ -477,6 +585,24 @@ let JobsService = JobsService_1 = class JobsService {
                     error: err.message,
                 },
             });
+        }
+    }
+    getDomainName(urlStr) {
+        try {
+            let formattedUrl = urlStr.trim();
+            if (!/^https?:\/\//i.test(formattedUrl)) {
+                formattedUrl = `https://${formattedUrl}`;
+            }
+            const url = new URL(formattedUrl);
+            const host = url.hostname.replace('www.', '');
+            const parts = host.split('.');
+            if (parts.length > 0) {
+                return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+            }
+            return urlStr;
+        }
+        catch (e) {
+            return urlStr;
         }
     }
     async enrichLeadWithContacts(leadId, domain, companyName) {

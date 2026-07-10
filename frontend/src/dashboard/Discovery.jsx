@@ -145,6 +145,11 @@ export default function Discovery({ token, jobs, onRefresh, onNotify, onViewJobL
                     >
                       {j.query || 'URL List'}
                     </button>
+                    {j.error && (
+                      <div style={{ fontSize: '0.72rem', color: 'rgba(248, 250, 252, 0.45)', marginTop: '4px', maxWidth: '280px', lineHeight: '1.4' }}>
+                        💡 {j.error}
+                      </div>
+                    )}
                   </td>
                   <td style={T.td}>{j.location || '—'}</td>
                   <td style={T.td}><StatusBadge status={j.status} /></td>

@@ -77,6 +77,10 @@ export default function Dashboard({ token, onLogout }) {
       notify('⚠️ Enter Industry and Location to search');
       return;
     }
+    if (!filterTitles.trim() && !filterKeywords.trim()) {
+      notify('⚠️ Please specify at least one target title (e.g. CTO, Founder) to protect your scraping credits.');
+      return;
+    }
     if (window.innerWidth <= 768) {
       setSidebarOpen(false);
     }

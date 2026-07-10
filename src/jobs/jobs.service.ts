@@ -271,7 +271,7 @@ export class JobsService implements OnModuleInit {
         });
       }
 
-      // 3. Scrape websites sequentially to avoid rate limits
+      // 3. Filter and scrape websites sequentially to avoid rate limits
       const pendingLeads = await this.prisma.lead.findMany({
         where: { jobId: job.id },
       });
@@ -305,10 +305,46 @@ export class JobsService implements OnModuleInit {
 
           if (cachedLead) {
             this.logger.log(
-              `Found cached scrape result for ${lead.website}. Skipping live crawl.`,
+              `Found cached scrape result for ${lead.website}. Filtering contacts...`,
             );
-            const hasEmail = cachedLead.email && cachedLead.email.trim() !== '';
-            if (!hasEmail) {
+            let filterKeywords = job.keywords;
+            if (!filterKeywords) {
+              try {
+                const settings = job.userId
+                  ? await this.prisma.settings.findFirst({ where: { userId: job.userId } })
+                  : await this.prisma.settings.findFirst();
+                if (settings && settings.crawlKeywords) {
+                  filterKeywords = settings.crawlKeywords;
+                }
+              } catch {}
+            }
+
+            let matchingContacts = cachedLead.contacts || [];
+            if (filterKeywords && filterKeywords.trim()) {
+              const titleKeywords = filterKeywords
+                .split(',')
+                .map((k) => k.trim().toLowerCase())
+                .filter(Boolean);
+              if (titleKeywords.length > 0) {
+                matchingContacts = matchingContacts.filter((c) => {
+                  const roleLower = (c.role || '').toLowerCase();
+                  return titleKeywords.some((keyword) => {
+                    if (roleLower.includes(keyword)) return true;
+                    const words = roleLower
+                      .split(/[\s\-\/]+/)
+                      .filter((w) => w && w !== 'of' && w !== 'and' && w !== 'the');
+                    const initials = words.map((w) => w.charAt(0)).join('');
+                    if (initials === keyword || initials.includes(keyword)) return true;
+                    return false;
+                  });
+                });
+              }
+            }
+
+            if (matchingContacts.length === 0) {
+              this.logger.log(
+                `No matching contacts found in cached lead for ${lead.website}. Discarding lead.`,
+              );
               await this.prisma.lead.delete({
                 where: { id: lead.id },
               });
@@ -329,18 +365,16 @@ export class JobsService implements OnModuleInit {
               });
 
               // Clone contacts from cache
-              if (cachedLead.contacts && cachedLead.contacts.length > 0) {
-                for (const cachedContact of cachedLead.contacts) {
-                  await this.prisma.contact.create({
-                    data: {
-                      leadId: lead.id,
-                      name: cachedContact.name,
-                      role: cachedContact.role,
-                      email: cachedContact.email,
-                      linkedin: cachedContact.linkedin,
-                    },
-                  });
-                }
+              for (const cachedContact of matchingContacts) {
+                await this.prisma.contact.create({
+                  data: {
+                    leadId: lead.id,
+                    name: cachedContact.name,
+                    role: cachedContact.role,
+                    email: cachedContact.email,
+                    linkedin: cachedContact.linkedin,
+                  },
+                });
               }
 
               const settings = await this.emailService.getSettings();
@@ -361,7 +395,30 @@ export class JobsService implements OnModuleInit {
             continue;
           }
 
-          // 2. Perform live scrape
+          // 2. Query contact enrichment first before live scrape
+          const candidateCompanyName = this.getDomainName(lead.website);
+          this.logger.log(
+            `Job ${job.id}: Fetching contacts for ${lead.website} (Candidate: ${candidateCompanyName}) before scraping...`,
+          );
+
+          const enrichedContacts = await this.enrichLeadWithContacts(
+            lead.id,
+            lead.website,
+            candidateCompanyName,
+          );
+
+          if (!enrichedContacts || enrichedContacts === 0) {
+            this.logger.warn(
+              `Job ${job.id}: No target decision-maker contacts found for ${lead.website}. Discarding lead.`,
+            );
+            await this.prisma.lead.delete({ where: { id: lead.id } });
+            continue;
+          }
+
+          // 3. Target contacts exist, now perform live scrape
+          this.logger.log(
+            `Job ${job.id}: Decision-maker contacts found. Scraping ${lead.website} now...`,
+          );
           const scrapedData = await this.firecrawl.scrape(lead.website);
 
           // Post-scrape relevance gate: discard leads unrelated to the search query
@@ -395,13 +452,6 @@ export class JobsService implements OnModuleInit {
             },
           });
 
-          // Enrich lead with contacts from Hunter.io and Apollo
-          const enrichedContacts = await this.enrichLeadWithContacts(
-            lead.id,
-            lead.website,
-            scrapedData.companyName,
-          );
-
           const settings = await this.emailService.getSettings();
           const hasContactsOrEmail =
             (enrichedContacts && enrichedContacts > 0) ||
@@ -418,7 +468,7 @@ export class JobsService implements OnModuleInit {
           }
         } catch (scrapeErr: any) {
           this.logger.error(
-            `Job ${job.id}: Failed to scrape domain ${lead.website} - ${scrapeErr.message}`,
+            `Job ${job.id}: Failed to process domain ${lead.website} - ${scrapeErr.message}`,
           );
           await this.prisma.lead.update({
             where: { id: lead.id },
@@ -430,12 +480,26 @@ export class JobsService implements OnModuleInit {
         }
       }
 
-      // Mark Job as COMPLETED
+      // Check if job completed with 0 leads or very few leads
+      const finalLeadCount = await this.prisma.lead.count({
+        where: { jobId: job.id },
+      });
+
+      let statusMsg: string | null = null;
+      if (finalLeadCount === 0) {
+        statusMsg = 'No leads found matching your target titles. Try adding more general keywords (e.g. Owner, Founder, Manager) to capture more contacts.';
+      } else if (finalLeadCount < 3) {
+        statusMsg = `Only ${finalLeadCount} lead${finalLeadCount > 1 ? 's' : ''} found matching your target titles. If you want more results, try adding alternative titles/keywords in the sidebar (e.g. CEO, Director) to expand the search.`;
+      }
+
       await this.prisma.job.update({
         where: { id: job.id },
-        data: { status: 'COMPLETED' },
+        data: {
+          status: 'COMPLETED',
+          error: statusMsg,
+        },
       });
-      this.logger.log(`Job ${job.id} completed successfully.`);
+      this.logger.log(`Job ${job.id} completed. Status message: ${statusMsg || 'Success (3+ leads)'}`);
     } catch (err: any) {
       this.logger.error(`Job ${job.id} failed: ${err.message}`);
       await this.prisma.job.update({
@@ -486,10 +550,46 @@ export class JobsService implements OnModuleInit {
 
           if (cachedLead) {
             this.logger.log(
-              `Found cached scrape result for ${lead.website}. Skipping live crawl.`,
+              `Found cached scrape result for ${lead.website}. Filtering contacts...`,
             );
-            const hasEmail = cachedLead.email && cachedLead.email.trim() !== '';
-            if (!hasEmail) {
+            let filterKeywords = job.keywords;
+            if (!filterKeywords) {
+              try {
+                const settings = job.userId
+                  ? await this.prisma.settings.findFirst({ where: { userId: job.userId } })
+                  : await this.prisma.settings.findFirst();
+                if (settings && settings.crawlKeywords) {
+                  filterKeywords = settings.crawlKeywords;
+                }
+              } catch {}
+            }
+
+            let matchingContacts = cachedLead.contacts || [];
+            if (filterKeywords && filterKeywords.trim()) {
+              const titleKeywords = filterKeywords
+                .split(',')
+                .map((k) => k.trim().toLowerCase())
+                .filter(Boolean);
+              if (titleKeywords.length > 0) {
+                matchingContacts = matchingContacts.filter((c) => {
+                  const roleLower = (c.role || '').toLowerCase();
+                  return titleKeywords.some((keyword) => {
+                    if (roleLower.includes(keyword)) return true;
+                    const words = roleLower
+                      .split(/[\s\-\/]+/)
+                      .filter((w) => w && w !== 'of' && w !== 'and' && w !== 'the');
+                    const initials = words.map((w) => w.charAt(0)).join('');
+                    if (initials === keyword || initials.includes(keyword)) return true;
+                    return false;
+                  });
+                });
+              }
+            }
+
+            if (matchingContacts.length === 0) {
+              this.logger.log(
+                `No matching contacts found in cached lead for ${lead.website}. Discarding lead.`,
+              );
               await this.prisma.lead.delete({
                 where: { id: lead.id },
               });
@@ -510,18 +610,16 @@ export class JobsService implements OnModuleInit {
               });
 
               // Clone contacts from cache
-              if (cachedLead.contacts && cachedLead.contacts.length > 0) {
-                for (const cachedContact of cachedLead.contacts) {
-                  await this.prisma.contact.create({
-                    data: {
-                      leadId: lead.id,
-                      name: cachedContact.name,
-                      role: cachedContact.role,
-                      email: cachedContact.email,
-                      linkedin: cachedContact.linkedin,
-                    },
-                  });
-                }
+              for (const cachedContact of matchingContacts) {
+                await this.prisma.contact.create({
+                  data: {
+                    leadId: lead.id,
+                    name: cachedContact.name,
+                    role: cachedContact.role,
+                    email: cachedContact.email,
+                    linkedin: cachedContact.linkedin,
+                  },
+                });
               }
 
               const settings = await this.emailService.getSettings();
@@ -542,7 +640,30 @@ export class JobsService implements OnModuleInit {
             continue;
           }
 
-          // 2. Perform live scrape
+          // 2. Query contact enrichment first before live scrape
+          const candidateCompanyName = this.getDomainName(lead.website);
+          this.logger.log(
+            `Job ${job.id}: Fetching contacts for ${lead.website} (Candidate: ${candidateCompanyName}) before scraping...`,
+          );
+
+          const enrichedContacts2 = await this.enrichLeadWithContacts(
+            lead.id,
+            lead.website,
+            candidateCompanyName,
+          );
+
+          if (!enrichedContacts2 || enrichedContacts2 === 0) {
+            this.logger.warn(
+              `Job ${job.id}: No target decision-maker contacts found for ${lead.website}. Discarding lead.`,
+            );
+            await this.prisma.lead.delete({ where: { id: lead.id } });
+            continue;
+          }
+
+          // 3. Target contacts exist, now perform live scrape
+          this.logger.log(
+            `Job ${job.id}: Decision-maker contacts found. Scraping ${lead.website} now...`,
+          );
           const scrapedData = await this.firecrawl.scrape(lead.website);
 
           const updatedLead = await this.prisma.lead.update({
@@ -560,13 +681,6 @@ export class JobsService implements OnModuleInit {
             },
           });
 
-          // Enrich lead with contacts from Hunter.io and Apollo
-          const enrichedContacts2 = await this.enrichLeadWithContacts(
-            lead.id,
-            lead.website,
-            scrapedData.companyName,
-          );
-
           const settings = await this.emailService.getSettings();
           const hasContactsOrEmail2 =
             enrichedContacts2 > 0 ||
@@ -583,7 +697,7 @@ export class JobsService implements OnModuleInit {
           }
         } catch (scrapeErr: any) {
           this.logger.error(
-            `Job ${job.id}: Failed to scrape domain ${lead.website} - ${scrapeErr.message}`,
+            `Job ${job.id}: Failed to process domain ${lead.website} - ${scrapeErr.message}`,
           );
           await this.prisma.lead.update({
             where: { id: lead.id },
@@ -595,12 +709,26 @@ export class JobsService implements OnModuleInit {
         }
       }
 
-      // Mark Job as COMPLETED
+      // Check if job completed with 0 leads or very few leads
+      const finalLeadCount = await this.prisma.lead.count({
+        where: { jobId: job.id },
+      });
+
+      let statusMsg: string | null = null;
+      if (finalLeadCount === 0) {
+        statusMsg = 'No leads found matching your target titles. Try adding more general keywords (e.g. Owner, Founder, Manager) to capture more contacts.';
+      } else if (finalLeadCount < 3) {
+        statusMsg = `Only ${finalLeadCount} lead${finalLeadCount > 1 ? 's' : ''} found matching your target titles. If you want more results, try adding alternative titles/keywords in the sidebar (e.g. CEO, Director) to expand the search.`;
+      }
+
       await this.prisma.job.update({
         where: { id: job.id },
-        data: { status: 'COMPLETED' },
+        data: {
+          status: 'COMPLETED',
+          error: statusMsg,
+        },
       });
-      this.logger.log(`Job ${job.id} completed successfully.`);
+      this.logger.log(`Job ${job.id} completed. Status message: ${statusMsg || 'Success (3+ leads)'}`);
     } catch (err: any) {
       this.logger.error(`Job ${job.id} failed: ${err.message}`);
       await this.prisma.job.update({
@@ -610,6 +738,24 @@ export class JobsService implements OnModuleInit {
           error: err.message,
         },
       });
+    }
+  }
+
+  private getDomainName(urlStr: string): string {
+    try {
+      let formattedUrl = urlStr.trim();
+      if (!/^https?:\/\//i.test(formattedUrl)) {
+        formattedUrl = `https://${formattedUrl}`;
+      }
+      const url = new URL(formattedUrl);
+      const host = url.hostname.replace('www.', '');
+      const parts = host.split('.');
+      if (parts.length > 0) {
+        return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+      }
+      return urlStr;
+    } catch (e) {
+      return urlStr;
     }
   }
 

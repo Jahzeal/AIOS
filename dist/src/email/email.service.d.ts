@@ -25,33 +25,34 @@ export declare class EmailService {
     checkSuppression(email: string): Promise<boolean>;
     getSuppressions(): Promise<{
         id: string;
-        createdAt: Date;
         emailOrDomain: string;
         reason: string | null;
+        createdAt: Date;
     }[]>;
     addSuppression(emailOrDomain: string, reason?: string): Promise<{
         id: string;
-        createdAt: Date;
         emailOrDomain: string;
         reason: string | null;
+        createdAt: Date;
     }>;
     removeSuppression(id: string): Promise<{
         id: string;
-        createdAt: Date;
         emailOrDomain: string;
         reason: string | null;
+        createdAt: Date;
     }>;
     getConsentLedger(): Promise<{
         id: string;
-        email: string;
         leadId: string;
         businessName: string;
+        email: string;
         relevanceReason: string;
         checkedAt: Date;
     }[]>;
     getDailyStats(userId?: string): Promise<EmailStats>;
     private generatePersonalizedPitch;
     private verifyCompliance;
+    getAlternativeTitles(query: string, attemptedTitle: string): Promise<string>;
     private callGemini;
     private sendEmail;
     private sleep;
@@ -68,9 +69,10 @@ export declare class EmailService {
         bookingLink?: string;
     }): Promise<{
         id: string;
+        createdAt: Date;
+        email: string;
         userId: string | null;
         corporateName: string;
-        email: string;
         phoneNumber: string;
         emailTemplate: string;
         leadsPerDay: number;
@@ -79,14 +81,13 @@ export declare class EmailService {
         crawlKeywords: string;
         autoRespond: boolean;
         bookingLink: string;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     getReceivedReplies(userId?: string): Promise<({
         lead: {
             id: string;
-            email: string | null;
             createdAt: Date;
+            email: string | null;
             updatedAt: Date;
             jobId: string;
             companyName: string | null;
@@ -107,10 +108,10 @@ export declare class EmailService {
     } & {
         id: string;
         createdAt: Date;
-        updatedAt: Date;
         leadId: string;
-        subject: string;
+        updatedAt: Date;
         from: string;
+        subject: string;
         bodyText: string | null;
         bodyHtml: string | null;
         receivedAt: Date;
@@ -121,10 +122,10 @@ export declare class EmailService {
     updateDraftReply(receivedEmailId: string, subject: string, body: string): Promise<{
         id: string;
         createdAt: Date;
-        updatedAt: Date;
         leadId: string;
-        subject: string;
+        updatedAt: Date;
         from: string;
+        subject: string;
         bodyText: string | null;
         bodyHtml: string | null;
         receivedAt: Date;
@@ -139,10 +140,10 @@ export declare class EmailService {
     generateFollowUpDraft(lead: any, receivedEmail: any): Promise<{
         id: string;
         createdAt: Date;
-        updatedAt: Date;
         leadId: string;
-        subject: string;
+        updatedAt: Date;
         from: string;
+        subject: string;
         bodyText: string | null;
         bodyHtml: string | null;
         receivedAt: Date;

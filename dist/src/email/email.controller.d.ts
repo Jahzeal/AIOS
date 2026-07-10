@@ -5,32 +5,32 @@ export declare class EmailController {
     getStatus(req: any): Promise<import("./email.service").EmailStats>;
     getConsentLedger(): Promise<{
         id: string;
-        email: string;
         leadId: string;
         businessName: string;
+        email: string;
         relevanceReason: string;
         checkedAt: Date;
     }[]>;
     getSuppressions(): Promise<{
         id: string;
-        createdAt: Date;
         emailOrDomain: string;
         reason: string | null;
+        createdAt: Date;
     }[]>;
     addSuppression(body: {
         emailOrDomain: string;
         reason?: string;
     }): Promise<{
         id: string;
-        createdAt: Date;
         emailOrDomain: string;
         reason: string | null;
+        createdAt: Date;
     }>;
     removeSuppression(id: string): Promise<{
         id: string;
-        createdAt: Date;
         emailOrDomain: string;
         reason: string | null;
+        createdAt: Date;
     }>;
     triggerEmail(leadId: string): Promise<{
         success: boolean;
@@ -40,8 +40,8 @@ export declare class EmailController {
     getReplies(req: any): Promise<({
         lead: {
             id: string;
-            email: string | null;
             createdAt: Date;
+            email: string | null;
             updatedAt: Date;
             jobId: string;
             companyName: string | null;
@@ -62,10 +62,10 @@ export declare class EmailController {
     } & {
         id: string;
         createdAt: Date;
-        updatedAt: Date;
         leadId: string;
-        subject: string;
+        updatedAt: Date;
         from: string;
+        subject: string;
         bodyText: string | null;
         bodyHtml: string | null;
         receivedAt: Date;
@@ -82,10 +82,10 @@ export declare class EmailController {
     }): Promise<{
         id: string;
         createdAt: Date;
-        updatedAt: Date;
         leadId: string;
-        subject: string;
+        updatedAt: Date;
         from: string;
+        subject: string;
         bodyText: string | null;
         bodyHtml: string | null;
         receivedAt: Date;
@@ -99,9 +99,10 @@ export declare class EmailController {
     getSettings(req: any): Promise<any>;
     updateSettings(req: any, body: any): Promise<{
         id: string;
+        createdAt: Date;
+        email: string;
         userId: string | null;
         corporateName: string;
-        email: string;
         phoneNumber: string;
         emailTemplate: string;
         leadsPerDay: number;
@@ -110,7 +111,6 @@ export declare class EmailController {
         crawlKeywords: string;
         autoRespond: boolean;
         bookingLink: string;
-        createdAt: Date;
         updatedAt: Date;
     }>;
 }

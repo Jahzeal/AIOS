@@ -658,6 +658,35 @@ JSON Format:
     }
   }
 
+  async getAlternativeTitles(
+    query: string,
+    attemptedTitle: string,
+  ): Promise<string> {
+    if (!this.useGemini) {
+      this.logger.warn(
+        'Gemini API key is not set or in mock mode. Returning fallback suggestions.',
+      );
+      return 'Owner, Founder, Manager';
+    }
+
+    const prompt =
+      `You are a B2B lead generation assistant. A user tried to search for B2B contacts in the "${query}" industry ` +
+      `targeting the title "${attemptedTitle}", but no matches were found. Suggest the top 2 or 3 alternative target ` +
+      `titles that actually exist in this industry and would be useful to target (e.g. CEO, CTO, Founder, Owner, Managing Director). ` +
+      `Respond ONLY with a comma-separated list of the titles. Do not include any introduction, explanations, or extra punctuation. ` +
+      `Example Output: Practice Manager, Dentist, Owner`;
+
+    try {
+      const responseText = await this.callGemini(prompt, false);
+      return responseText.trim();
+    } catch (err: any) {
+      this.logger.error(
+        `Failed to generate alternative titles from Gemini: ${err.message}`,
+      );
+      return 'Owner, Founder, Manager';
+    }
+  }
+
   /**
    * Gemini API client helper
    */
