@@ -1,17 +1,26 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Welcome from './routes/Welcome';
-import AuthPage from './AuthPage';
-// import Login from './login/Login'; // removed unused Login component
-import Signup from './signup/Signup';
 import Dashboard from './dashboard/Dashboard';
 import Settings from './settings/Settings';
 import ProtectedRoute from './routes/ProtectedRoute';
 
+const FLUCTURE_LOGIN_URL = process.env.REACT_APP_FLUCTURE_URL || 'http://localhost:3000/login';
+
+function RedirectToFlucture() {
+  useEffect(() => {
+    window.location.href = FLUCTURE_LOGIN_URL;
+  }, []);
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0d14', color: '#fff', fontFamily: 'sans-serif' }}>
+      <p>Redirecting to Flucture Single Sign-On...</p>
+    </div>
+  );
+}
+
 export default function AppRouter() {
   const [token, setToken] = useState(localStorage.getItem('token'));
 
-  // Persist token changes
   useEffect(() => {
     if (token) {
       localStorage.setItem('token', token);
@@ -21,19 +30,15 @@ export default function AppRouter() {
   }, [token]);
 
   const handleLogout = () => {
-    localStorage.clear(); // Wipe ALL cached data, not just the token
+    localStorage.clear();
     setToken(null);
+    window.location.href = FLUCTURE_LOGIN_URL;
   };
 
   return (
     <BrowserRouter>
       <Routes>
-          {/* If no token, show AuthPage (login/register) */}
-          {!token && (
-            <Route path="/" element={<AuthPage setToken={setToken} />} />
-          )}
-        {/* Authenticated routes */}
-        {token && (
+        {token ? (
           <>
             <Route path="/welcome" element={<Welcome token={token} setToken={setToken} />} />
             <Route
@@ -46,10 +51,13 @@ export default function AppRouter() {
             />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </>
+        ) : (
+          <>
+            <Route path="/" element={<RedirectToFlucture />} />
+            <Route path="/signup" element={<RedirectToFlucture />} />
+            <Route path="/login" element={<RedirectToFlucture />} />
+          </>
         )}
-        {/* Public route for signup */}
-        <Route path="/signup" element={<Signup setToken={setToken} />} />
-        {/* Catch‑all redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
