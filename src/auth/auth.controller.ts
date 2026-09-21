@@ -115,4 +115,27 @@ export class AuthController {
     if (!credential) throw new BadRequestException('Credential token required');
     return this.authService.googleLogin(credential);
   }
+
+  // ─── Forgot Password ───────────────────────────────────────
+  @Post('forgot-password')
+  async forgotPassword(@Body() body: any) {
+    const { email } = body;
+    if (!email) throw new BadRequestException('Email is required');
+    await this.authService.sendForgotPasswordOtp(email);
+    return { message: 'Password reset code sent to your email' };
+  }
+
+  // ─── Reset Password ────────────────────────────────────────
+  @Post('reset-password')
+  async resetPassword(@Body() body: any) {
+    const { email, code, newPassword } = body;
+    if (!email || !code || !newPassword) {
+      throw new BadRequestException('Email, verification code, and new password are required');
+    }
+    if (newPassword.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+    return this.authService.resetPassword(email, code, newPassword);
+  }
+
 }

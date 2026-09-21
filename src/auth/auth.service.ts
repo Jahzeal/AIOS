@@ -215,4 +215,43 @@ export class AuthService implements OnModuleInit {
     const token = this.createToken(user.id, user.email);
     return { token, email: user.email };
   }
+
+  async sendForgotPasswordOtp(email: string): Promise<void> {
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await this.prisma.user.findUnique({
+      where: { email: cleanEmail },
+    });
+    if (!user) {
+      throw new BadRequestException('No account found with this email address');
+    }
+
+    const code = this.generateOtp();
+    this.storeOtp(cleanEmail, code);
+    await this.sendOtpEmail(cleanEmail, code);
+  }
+
+  async resetPassword(email: string, code: string, newPass: string) {
+    const cleanEmail = email.toLowerCase().trim();
+    const valid = this.verifyOtp(cleanEmail, code);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid or expired verification code');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: cleanEmail },
+    });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const hashed = this.hashPassword(newPass);
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashed },
+    });
+
+    const token = this.createToken(updated.id, updated.email);
+    return { token, email: updated.email, message: 'Password reset successfully' };
+  }
+
 }
