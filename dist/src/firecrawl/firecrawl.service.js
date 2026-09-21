@@ -44,7 +44,7 @@ let FirecrawlService = FirecrawlService_1 = class FirecrawlService {
             return this.generateMockDomains(query, location);
         }
         try {
-            const response = await axios_1.default.post('https://api.firecrawl.dev/v1/search', { query: fullQuery, limit: 20 }, {
+            const response = await axios_1.default.post('https://api.firecrawl.dev/v1/search', { query: fullQuery, limit: 50 }, {
                 headers: {
                     Authorization: `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json',

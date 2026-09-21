@@ -52,7 +52,7 @@ export class FirecrawlService {
     try {
       const response = await axios.post(
         'https://api.firecrawl.dev/v1/search',
-        { query: fullQuery, limit: 20 }, // fetch more, we'll filter down
+        { query: fullQuery, limit: 50 }, // fetch more, we'll filter down
         {
           headers: {
             Authorization: `Bearer ${this.apiKey}`,

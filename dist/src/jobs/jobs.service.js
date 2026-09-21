@@ -265,7 +265,9 @@ let JobsService = JobsService_1 = class JobsService {
                                 matchingContacts = matchingContacts.filter((c) => {
                                     const roleLower = (c.role || '').toLowerCase();
                                     return titleKeywords.some((keyword) => {
-                                        if (roleLower.includes(keyword))
+                                        const escapedKeyword = keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                                        const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
+                                        if (regex.test(roleLower))
                                             return true;
                                         const words = roleLower
                                             .split(/[\s\-\/]+/)
@@ -456,7 +458,9 @@ let JobsService = JobsService_1 = class JobsService {
                                 matchingContacts = matchingContacts.filter((c) => {
                                     const roleLower = (c.role || '').toLowerCase();
                                     return titleKeywords.some((keyword) => {
-                                        if (roleLower.includes(keyword))
+                                        const escapedKeyword = keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                                        const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
+                                        if (regex.test(roleLower))
                                             return true;
                                         const words = roleLower
                                             .split(/[\s\-\/]+/)
@@ -660,7 +664,9 @@ let JobsService = JobsService_1 = class JobsService {
                     mergedContacts = mergedContacts.filter((c) => {
                         const roleLower = (c.role || '').toLowerCase();
                         return titleKeywords.some((keyword) => {
-                            if (roleLower.includes(keyword))
+                            const escapedKeyword = keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                            const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
+                            if (regex.test(roleLower))
                                 return true;
                             const words = roleLower
                                 .split(/[\s\-\/]+/)
